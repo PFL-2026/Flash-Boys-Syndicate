@@ -18,7 +18,7 @@
      "odds": "7.36",
      "fixture": null,
      "outcome": null,
-     "result": "open"
+     "result": "lost"
     }
    ]
   },
@@ -70,5 +70,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1793482670595
+ "updatedAt": 1793483372392
 }
