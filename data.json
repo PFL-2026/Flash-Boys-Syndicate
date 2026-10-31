@@ -6,6 +6,23 @@
  ],
  "bets": [
   {
+   "id": "bmvwj5zs97vui",
+   "createdAt": 1793458972523,
+   "type": "single",
+   "stake": 25,
+   "legs": [
+    {
+     "name": "All of us",
+     "joint": true,
+     "pick": "City +3.5, Coventry +3.5",
+     "odds": "7.36",
+     "fixture": null,
+     "outcome": null,
+     "result": "open"
+    }
+   ]
+  },
+  {
    "id": "bmvwexu8036bh",
    "createdAt": 1793451873600,
    "stake": 50,
@@ -53,5 +70,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1793452890809
+ "updatedAt": 1793458972524
 }
