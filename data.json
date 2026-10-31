@@ -38,7 +38,7 @@
       "away": "Sunderland"
      },
      "outcome": "H",
-     "result": "won"
+     "result": "open"
     },
     {
      "name": "Jacques",
@@ -70,5 +70,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1793482668050
+ "updatedAt": 1793482670595
 }
