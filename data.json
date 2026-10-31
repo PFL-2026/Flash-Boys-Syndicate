@@ -4,6 +4,54 @@
   "Jacques",
   "Des"
  ],
- "bets": [],
- "updatedAt": 1793434505899
+ "bets": [
+  {
+   "id": "bmvwexu8036bh",
+   "createdAt": 1793451873600,
+   "stake": 50,
+   "legs": [
+    {
+     "name": "Cowles",
+     "pick": "Coventry win",
+     "odds": "3",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-10-31",
+      "home": "Coventry",
+      "away": "Sunderland"
+     },
+     "outcome": "H",
+     "result": "open"
+    },
+    {
+     "name": "Jacques",
+     "pick": "Hull win",
+     "odds": "2.75",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-10-31",
+      "home": "Hull",
+      "away": "Ipswich"
+     },
+     "outcome": "H",
+     "result": "open"
+    },
+    {
+     "name": "Des",
+     "pick": "Aston Villa win",
+     "odds": "2.1",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-10-31",
+      "home": "Aston Villa",
+      "away": "Fulham"
+     },
+     "outcome": "H",
+     "result": "open"
+    }
+   ]
+  }
+ ],
+ "lineups": {},
+ "updatedAt": 1793451873601
 }
