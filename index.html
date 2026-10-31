@@ -353,6 +353,24 @@ body.locked{overflow:hidden}
 .sg-note{font-size:11px;color:var(--muted);margin:14px 0 0;line-height:1.5}
 .vchk{font-size:12px;margin-top:6px}
 .vchk.pos b{color:var(--win)} .vchk.neg b{color:var(--loss)}
+
+/* Betfair Exchange labelling */
+.bfx{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:5px;background:#F2EFE6;color:#0A0A0B;white-space:nowrap;vertical-align:middle}
+.bfx::before{content:"⇄";font-size:11px}
+.exh{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px;color:var(--muted)}
+.exg{display:grid;grid-template-columns:repeat(3,1fr);margin-top:6px}
+.exg div{display:flex;flex-direction:column;gap:2px}
+.exg div:first-child{align-items:flex-start} .exg div:nth-child(2){align-items:center} .exg div:last-child{align-items:flex-end}
+.exg b{font-family:var(--display);font-stretch:80%;font-weight:900;font-size:18px;font-variant-numeric:tabular-nums}
+.vt{font-size:10px;font-weight:800;padding:1px 6px;border-radius:999px;background:var(--raise);color:var(--muted)}
+.vt.pos{background:rgba(61,220,132,.14);color:var(--win)}
+.sgx{display:flex!important;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px}
+.sg-ex{margin:10px 0 2px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.sg-ex div{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sg-ex b{font-size:14px}
+.sg-ex small{display:block;font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45}
+.sg-h2 .bfx{font-size:11px;margin-left:4px}
+.dstat b .bfx{margin-right:2px}
 </style>
 </head>
 <body>
@@ -703,6 +721,14 @@ var FBModel = (function(){
     res.source = auto ? (auto.verified ? "verified" : "espn") : (res.sides[0].manual || res.sides[1].manual) ? "manual" : "predicted";
     return res;
   }
+  // ---- Betfair Exchange odds (via The Odds API, filled by the GitHub job) ----
+  var COMMISSION = 0.05;
+  function exch(f){ var x = f && FPL && FPLMAP[fkey(f)]; return x && FPL.odds && FPL.odds[x.id] ? FPL.odds[x.id] : null; }
+  function netDec(d){ return 1 + (d - 1) * (1 - COMMISSION); }
+  function edgeOf(p, d){ return p * netDec(d) - 1; }
+  function exPrice(o, code){ return o ? o[{H:"h",D:"d",A:"a"}[code]] : null; }
+  function bfxTag(){ return el("span","bfx","Betfair Exchange"); }
+  function valTag(p, d){ var e = edgeOf(p, d); return el("span","vt " + (e > 0 ? "pos" : "neg"), e > 0 ? "value +" + Math.round(e*100) + "%" : Math.round(e*100) + "%"); }
   function playerName(id){ var p = FPL && FPL.players[id]; return p ? p[0] : "?"; }
   function predFor(f){
     if(!MODEL || !f || f.lg !== "en.1") return null;
@@ -950,6 +976,13 @@ var FBModel = (function(){
       ds.appendChild(el("span",null,"Predictions still work from results."));
     }
     body.appendChild(ds);
+    if(FPL && FPL.oddsStatus){
+      var os = FPL.oddsStatus, od = el("div","dstat " + (os.ok ? "ok" : os.message === "Not set up" ? "" : "bad"));
+      var ob = el("b"); ob.appendChild(bfxTag()); ob.appendChild(document.createTextNode(os.ok ? " odds: connected" : os.message === "Not set up" ? " odds: not set up yet" : " odds: not working"));
+      od.appendChild(ob);
+      od.appendChild(el("span",null, os.ok ? "Prices updated " + when(Date.parse(os.pulled)) + ". Value allows for 5% exchange commission." : os.message === "Not set up" ? "Add a free The Odds API key to show exchange prices." : os.message));
+      body.appendChild(od);
+    }
     if(MODEL_STATE !== "ready"){
       if(MODEL_STATE === "idle") loadHistory();
       body.appendChild(el("div","idle", MODEL_STATE === "failed" ? "Couldn’t load the data. Tap Refresh on the main page and try again." : "Crunching the numbers…"));
@@ -978,6 +1011,18 @@ var FBModel = (function(){
       var ft = el("div","pm-foot");
       [[f.home + " win", pr.home],["Draw", pr.draw],[f.away + " win", pr.away]].forEach(function(s){ var d = el("div"); d.appendChild(el("b",null,"Fair " + fairOdds(s[1]))); d.appendChild(document.createTextNode(s[0])); ft.appendChild(d); });
       c.appendChild(ft);
+      var ex = exch(f);
+      if(ex){
+        var exh = el("div","exh"); exh.appendChild(bfxTag()); exh.appendChild(el("span",null,(ex.live ? "in-play " : "") + "back prices · " + when(Date.parse(ex.at)))); c.appendChild(exh);
+        var exg = el("div","exg");
+        [["H",pr.home],["D",pr.draw],["A",pr.away]].forEach(function(s){
+          var d = el("div"), price = exPrice(ex, s[0]);
+          d.appendChild(el("b",null, price ? price.toFixed(2) : "—"));
+          if(price) d.appendChild(valTag(s[1], price));
+          exg.appendChild(d);
+        });
+        c.appendChild(exg);
+      }
       var meta = el("div","pm-meta");
       var l = el("span",null,"Most likely score "); l.appendChild(el("b",null,pr.likely)); meta.appendChild(l);
       var g = el("span",null,"Expected goals "); g.appendChild(el("b",null, pr.xgHome.toFixed(1) + "–" + pr.xgAway.toFixed(1))); meta.appendChild(g);
@@ -1101,6 +1146,8 @@ var FBModel = (function(){
     var l = el("div"); l.appendChild(el("b",null,k.label)); l.appendChild(el("small",null,k.f.home + " v " + k.f.away + " · " + dayLabel(k.f.date) + (k.f.time ? " " + k.f.time : "")));
     r.appendChild(l);
     var rr = el("div","sg-r"); rr.appendChild(el("b",null,pct(k.p))); rr.appendChild(el("small",null,"fair " + fairOdds(k.p)));
+    var price = exPrice(exch(k.f), k.code);
+    if(price){ var xl = el("small","sgx"); xl.appendChild(document.createTextNode("Exchange " + price.toFixed(2) + " ")); xl.appendChild(valTag(k.p, price)); rr.appendChild(xl); }
     r.appendChild(rr);
     return r;
   }
@@ -1117,6 +1164,13 @@ var FBModel = (function(){
       var a = el("div"); a.appendChild(el("small",null,"Chance all three land")); a.appendChild(el("b",null,pct(p))); tot.appendChild(a);
       var b = el("div"); b.appendChild(el("small",null,"Fair treble odds")); b.appendChild(el("b",null,fairOdds(p))); tot.appendChild(b);
       card.appendChild(tot);
+      var prices = legs.map(function(k){ return exPrice(exch(k.f), k.code); });
+      if(prices.every(Boolean)){
+        var tx = prices.reduce(function(a,b){ return a*b; }, 1), eq = el("div","sg-ex");
+        var top = el("div"); top.appendChild(bfxTag()); top.appendChild(el("b",null,"equivalent " + tx.toFixed(2) + " (" + frac(tx) + ")")); eq.appendChild(top);
+        eq.appendChild(el("small",null,"Calculated by multiplying the three match prices. The exchange doesn’t offer trebles, so this is a guide to what the market thinks each leg is worth, not a bet you can place there."));
+        card.appendChild(eq);
+      }
       card.appendChild(el("p","sg-value","Worth backing if the bookie pays more than " + fairOdds(p) + " for the treble. Type their odds in when you add it and the app will tell you if it’s value."));
       if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
     } else {
@@ -1127,6 +1181,19 @@ var FBModel = (function(){
       card.appendChild(pickRow(k));
       card.appendChild(el("p","sg-value","Worth backing if the bookie pays more than " + fairOdds(k.p) + "."));
       if(canWrite){ var bs = el("button","btn primary sg-btn","Add this single to the tracker"); bs.type = "button"; bs.addEventListener("click", function(){ useSingle(k); }); card.appendChild(bs); }
+      // value option, only when exchange prices are in
+      var vals = [];
+      games.forEach(function(f){ var pr = predFor(f), ex = exch(f); if(!pr || !ex) return;
+        [["H",pr.home],["D",pr.draw],["A",pr.away]].forEach(function(s){ var d = exPrice(ex, s[0]); if(d && s[1] >= 0.25) vals.push({f:f, code:s[0], p:s[1], label:outcomeLabel(f, s[0]), e:edgeOf(s[1], d)}); });
+      });
+      vals.sort(function(a,b){ return b.e - a.e; });
+      if(vals.length && vals[0].e > 0){
+        var v = vals[0];
+        var vh = el("div","sg-h2"); vh.appendChild(document.createTextNode("Best value vs ")); vh.appendChild(bfxTag()); card.appendChild(vh);
+        card.appendChild(el("p","sg-sub","Where the model rates a result most above the exchange price (after commission). Exchange prices are very sharp, so when they disagree the market is often right. Treat this as a second opinion."));
+        card.appendChild(pickRow(v));
+        if(canWrite){ var bv = el("button","btn secondary sg-btn","Add this as a single"); bv.type = "button"; bv.addEventListener("click", function(){ useSingle(v); }); card.appendChild(bv); }
+      }
       // a second option: most likely draw
       var draws = games.map(function(f){ var pr = predFor(f); return pr ? {f:f, code:"D", p:pr.draw, label:"Draw"} : null; }).filter(Boolean).sort(function(a,b){ return b.p - a.p; });
       if(draws.length){
@@ -1144,7 +1211,7 @@ var FBModel = (function(){
   function useTreble(legs){
     closePredsForSheet();
     openSheet(null, "treble");
-    legs.forEach(function(k, i){ fillFixtures(i, fkey(k.f)); fillOutcomes(i, k.code); $("o"+i).value = ""; });
+    legs.forEach(function(k, i){ fillFixtures(i, fkey(k.f)); fillOutcomes(i, k.code); $("o"+i).value = ""; var px = exPrice(exch(k.f), k.code); $("o"+i).placeholder = px ? "Exch " + px.toFixed(2) : "Odds"; });
     updatePreview();
     setTimeout(function(){ $("o0").focus(); }, 80);
   }
@@ -1435,6 +1502,7 @@ var FBModel = (function(){
   function addLabel(){ return mode === "single" ? "Add single" : "Add treble"; }
   function openSheet(b, m){
     editingId = b ? b.id : null; SINGLE_P = null;
+    [0,1,2].forEach(function(i){ $("o"+i).placeholder = "Odds"; });
     mode = b ? (isSingle(b) ? "single" : "treble") : (m || "treble");
     var single = mode === "single";
     $("singleForm").hidden = !single; $("trebleForm").hidden = single;
