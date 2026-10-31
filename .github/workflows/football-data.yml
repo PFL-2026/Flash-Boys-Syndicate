@@ -1,0 +1,41 @@
+name: Football data
+
+on:
+  schedule:
+    - cron: "7,37 * * * *"   # every 30 minutes; most runs use no API requests
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force a full refresh"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: football-data
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Fetch lineups, stats and injuries
+        run: node scripts/fetch-football.mjs
+        env:
+          APIFOOTBALL_KEY: ${{ secrets.APIFOOTBALL_KEY }}
+          FORCE: ${{ inputs.force && '1' || '' }}
+      - name: Save to repo
+        run: |
+          git config user.name "flash-boys-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/football.json
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "Update football data"
+          git pull --rebase
+          git push
