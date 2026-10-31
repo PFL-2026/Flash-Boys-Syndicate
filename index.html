@@ -228,6 +228,26 @@ button.brow:last-child{border-bottom:0}
 .chip{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--raise);color:var(--open);margin-top:3px}
 .chip.won{background:rgba(61,220,132,.14);color:var(--win)} .chip.lost{background:rgba(255,90,79,.14);color:var(--loss)} .chip.void{color:var(--void)}
 body.locked{overflow:hidden}
+
+/* Two add buttons */
+.fabs{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:20;display:none;gap:8px;padding:6px;border-radius:999px;background:rgba(20,20,22,.85);border:1px solid var(--line);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.5)}
+.fab-btn{border:0;border-radius:999px;padding:12px 20px;font-family:var(--display);font-stretch:90%;font-weight:800;font-size:15px;letter-spacing:.02em;background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#0A0A0B;white-space:nowrap}
+.fab-btn.alt{background:var(--raise);color:var(--ink);border:1px solid var(--line)}
+/* Single form */
+.single-form[hidden]{display:none}
+.joint{display:flex;align-items:center;gap:8px;margin:0 0 8px;font-size:13px;color:var(--muted)}
+.joint::before{content:"★";display:grid;place-items:center;width:24px;height:24px;border-radius:8px;background:var(--gold);color:#0A0A0B;font-size:12px}
+.joint b{color:var(--ink)}
+.single-card{grid-template-columns:1fr 76px}
+.single-card .leg-custom{grid-column:1}
+.legs-form[hidden]{display:none}
+/* Single on cards */
+.av.joint-av{background:var(--gold);font-size:14px}
+.spill{display:inline-flex;align-items:center;gap:6px;min-width:0;max-width:100%;font-size:13px;font-weight:700;overflow:hidden}
+.spill i{flex:none;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 7px;border-radius:6px;background:var(--void);color:#0A0A0B}
+.spill.won i{background:var(--win)} .spill.lost i{background:var(--loss)}
+.spill span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.hrow summary{grid-template-columns:54px minmax(0,1fr) auto}
 </style>
 </head>
 <body>
@@ -264,7 +284,7 @@ body.locked{overflow:hidden}
   <p class="org"><button type="button" id="orgBtn" class="linkbtn">Organiser sign-in</button></p>
 </div>
 
-<button class="fab" id="fab" type="button">+ New treble</button>
+<div class="fabs" id="fab"><button class="fab-btn" id="fabTreble" type="button">+ Treble</button><button class="fab-btn alt" id="fabSingle" type="button">+ Single</button></div>
 
 <div id="profile" class="profile" role="dialog" aria-modal="true" aria-labelledby="profName" hidden>
   <div class="prof-bar">
@@ -284,7 +304,11 @@ body.locked{overflow:hidden}
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-head"><h3 id="sheetTitle">New treble</h3>
       <label class="stake"><span>£</span><input id="fStake" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Stake" aria-label="Stake in pounds"></label></div>
-    <div class="legs-form">
+    <div class="single-form" id="singleForm" hidden>
+      <p class="joint" id="jointNote"></p>
+      <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Single odds"></div>
+    </div>
+    <div class="legs-form" id="trebleForm">
       <div class="leg-card"><select id="n0" class="leg-name" aria-label="Leg 1 picked by"></select><select id="f0" class="leg-fix" aria-label="Leg 1 fixture"></select><select id="r0" class="leg-out" aria-label="Leg 1 result"></select><input id="x0" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 1 bet" hidden><input id="o0" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Leg 1 odds"></div>
       <div class="leg-card"><select id="n1" class="leg-name" aria-label="Leg 2 picked by"></select><select id="f1" class="leg-fix" aria-label="Leg 2 fixture"></select><select id="r1" class="leg-out" aria-label="Leg 2 result"></select><input id="x1" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 2 bet" hidden><input id="o1" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Leg 2 odds"></div>
       <div class="leg-card"><select id="n2" class="leg-name" aria-label="Leg 3 picked by"></select><select id="f2" class="leg-fix" aria-label="Leg 3 fixture"></select><select id="r2" class="leg-out" aria-label="Leg 3 result"></select><input id="x2" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 3 bet" hidden><input id="o2" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Leg 3 odds"></div>
@@ -375,6 +399,9 @@ body.locked{overflow:hidden}
     var a = f.ft[0], b = f.ft[1], act = a > b ? "H" : a < b ? "A" : "D";
     return {result: act === l.outcome ? "won" : "lost", score: a + "–" + b};
   }
+  function isSingle(b){ return b && b.type === "single"; }
+  function oddsText(b){ return isSingle(b) ? ((b.legs||[])[0]||{}).odds || "" : frac(comboOf(b)); }
+  var JOINT = "All of us";
   function legsOf(b){
     return (Array.isArray(b.legs) ? b.legs : []).map(function(l){
       var auto = autoResult(l);
@@ -424,7 +451,7 @@ body.locked{overflow:hidden}
   function legItem(b, l, i){
     var lr = l.result || "open";
     var li = el("li","leg " + lr);
-    var av = el("span","av",initials(l.name)); av.style.background = avColor(l.name);
+    var av = el("span","av" + (isSingle(b) ? " joint-av" : ""), isSingle(b) ? "★" : initials(l.name)); if(!isSingle(b)) av.style.background = avColor(l.name);
     if(lr !== "open") av.appendChild(el("i",null, lr==="won"?"✓":lr==="lost"?"✕":"–"));
     li.appendChild(av);
     var lt = el("div","lt"); lt.appendChild(el("small",null,l.name||"Someone")); lt.appendChild(el("span",null,l.pick||""));
@@ -452,8 +479,8 @@ body.locked{overflow:hidden}
   function legList(b){ var ul = el("ul","legs"); legsOf(b).forEach(function(l,i){ ul.appendChild(legItem(b,l,i)); }); return ul; }
   function foot(b){
     var r = statusOf(b), f = el("div","card-foot"), left = el("div");
-    if(r === "open"){ left.appendChild(document.createTextNode("£" + (Number(b.stake)||0) + " at " + frac(comboOf(b)) + " · returns ")); left.appendChild(el("b",null,gbp(potentialOf(b)))); }
-    else { var p = payoutOf(b), pl = p - (Number(b.stake)||0); left.appendChild(document.createTextNode("£" + (Number(b.stake)||0) + " at " + frac(comboOf(b)) + " · ")); left.appendChild(el("b", pl>0?"pos":pl<0?"neg":null, r==="won" ? gbp(p) : r==="void" ? "Void" : "Lost")); }
+    if(r === "open"){ left.appendChild(document.createTextNode("£" + (Number(b.stake)||0) + " at " + oddsText(b) + " · returns ")); left.appendChild(el("b",null,gbp(potentialOf(b)))); }
+    else { var p = payoutOf(b), pl = p - (Number(b.stake)||0); left.appendChild(document.createTextNode("£" + (Number(b.stake)||0) + " at " + oddsText(b) + " · ")); left.appendChild(el("b", pl>0?"pos":pl<0?"neg":null, r==="won" ? gbp(p) : r==="void" ? "Void" : "Lost")); }
     f.appendChild(left);
     if(canWrite){ var e = el("button","edit","Edit"); e.type="button"; e.addEventListener("click",function(ev){ ev.preventDefault(); openSheet(b); }); f.appendChild(e); }
     return f;
@@ -462,7 +489,7 @@ body.locked{overflow:hidden}
   // ---- Players ----
   function rows0(){
     var names = MEMBERS.slice();
-    bets.forEach(function(b){ legsOf(b).forEach(function(l){ var n=(l.name||"").trim(); if(n && !names.some(function(m){ return m.toLowerCase()===n.toLowerCase(); })) names.push(n); }); });
+    bets.forEach(function(b){ if(isSingle(b)) return; legsOf(b).forEach(function(l){ var n=(l.name||"").trim(); if(n && !names.some(function(m){ return m.toLowerCase()===n.toLowerCase(); })) names.push(n); }); });
     return names;
   }
   function slug(n){ return "p-" + String(n).toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""); }
@@ -501,7 +528,7 @@ body.locked{overflow:hidden}
     $("profName").textContent = name;
     $("profPrev").disabled = names.length < 2; $("profNext").disabled = names.length < 2;
     var picks = [];
-    bets.forEach(function(b){ legsOf(b).forEach(function(l){ if((l.name||"").trim().toLowerCase() === name.toLowerCase()) picks.push({b:b, l:l}); }); });
+    bets.forEach(function(b){ if(isSingle(b)) return; legsOf(b).forEach(function(l){ if((l.name||"").trim().toLowerCase() === name.toLowerCase()) picks.push({b:b, l:l}); }); });
     picks.sort(function(a,c){ return (c.b.createdAt||0) - (a.b.createdAt||0); });
     var won = picks.filter(function(x){ return x.l.result==="won"; }).length;
     var lost = picks.filter(function(x){ return x.l.result==="lost"; }).length;
@@ -573,24 +600,28 @@ body.locked{overflow:hidden}
     var open = bets.filter(function(b){ return statusOf(b) === "open"; });
     var done = bets.filter(function(b){ return statusOf(b) !== "open"; });
     if(!loaded){ live.appendChild(el("div","idle","Loading…")); }
-    else if(!open.length){ live.appendChild(el("div","idle", canWrite ? "No live treble. Tap + New treble to put one on." : "No live treble right now.")); }
+    else if(!open.length){ live.appendChild(el("div","idle", canWrite ? "Nothing live. Tap + Treble or + Single to put a bet on." : "No live bets right now.")); }
     open.forEach(function(b){
       var c = el("article","card");
-      var h = el("div","card-head"); h.appendChild(el("b",null,"Live treble"));
+      var h = el("div","card-head"); h.appendChild(el("b",null, isSingle(b) ? "Live single" : "Live treble"));
       var landed = legsOf(b).filter(function(l){ return l.result==="won"; }).length;
-      h.appendChild(el("span",null, landed ? landed + " of 3 in · " + shortDate(b.createdAt) : shortDate(b.createdAt)));
+      h.appendChild(el("span",null, isSingle(b) ? "Joint bet · " + shortDate(b.createdAt) : landed ? landed + " of 3 in · " + shortDate(b.createdAt) : shortDate(b.createdAt)));
       c.appendChild(h); c.appendChild(legList(b)); c.appendChild(foot(b));
       live.appendChild(c);
     });
 
     var list = $("list"); list.textContent = "";
-    if(loaded && !done.length) list.appendChild(el("div","empty","Settled trebles will appear here."));
+    if(loaded && !done.length) list.appendChild(el("div","empty","Settled bets will appear here."));
     done.forEach(function(b){
       var r = statusOf(b), d = el("details","hrow"), sm = el("summary");
       sm.appendChild(el("span","hdate",shortDate(b.createdAt)));
-      var dots = el("span","dots");
-      legsOf(b).forEach(function(l){ var lr=l.result||"open"; var dt = el("span","dot " + lr, initials(l.name)); dt.title = (l.name||"") + ": " + (l.pick||""); dots.appendChild(dt); });
-      sm.appendChild(dots);
+      if(isSingle(b)){
+        var sp = el("span","spill " + r); sp.appendChild(el("i",null,"Single")); sp.appendChild(el("span",null,(legsOf(b)[0]||{}).pick||"")); sm.appendChild(sp);
+      } else {
+        var dots = el("span","dots");
+        legsOf(b).forEach(function(l){ var lr=l.result||"open"; var dt = el("span","dot " + lr, initials(l.name)); dt.title = (l.name||"") + ": " + (l.pick||""); dots.appendChild(dt); });
+        sm.appendChild(dots);
+      }
       var p = payoutOf(b), pl = p - (Number(b.stake)||0);
       var res = el("span","hres " + (pl>0?"pos":pl<0?"neg":""), r==="won" ? signed(pl) : r==="void" ? "Void" : signed(pl));
       res.appendChild(el("small",null, r==="won" ? "Won" : r==="void" ? "Stake back" : "Lost"));
@@ -601,7 +632,7 @@ body.locked{overflow:hidden}
 
     var people = {};
     MEMBERS.forEach(function(m){ people[m.toLowerCase()] = {name:m,picks:0,won:0,lost:0}; });
-    bets.forEach(function(b){ legsOf(b).forEach(function(l){
+    bets.forEach(function(b){ if(isSingle(b)) return; legsOf(b).forEach(function(l){
       var key=(l.name||"Someone").trim(), k=key.toLowerCase();
       var p = people[k] || (people[k] = {name:key,picks:0,won:0,lost:0});
       p.picks++; if(l.result==="won") p.won++; if(l.result==="lost") p.lost++;
@@ -685,6 +716,14 @@ body.locked{overflow:hidden}
     });
   }
   function updatePreview(){
+    if(mode === "single"){
+      var sd = toDecimal($("sOdds").value), sst = parseFloat($("fStake").value.replace(/[£,\s]/g,""));
+      var spv = $("preview"); spv.textContent = "";
+      if($("sOdds").value && !sd){ spv.textContent = "Odds not recognised. Try 5/2, evens or 3.5."; return; }
+      if(sd && sst > 0){ spv.appendChild(document.createTextNode($("sOdds").value.trim() + " · returns ")); spv.appendChild(el("b",null,gbp(sst*sd))); }
+      else spv.textContent = "Add stake and odds to see the payout.";
+      return;
+    }
     var legs = formLegs(), stake = parseFloat($("fStake").value.replace(/[£,\s]/g,""));
     var pv = $("preview"); pv.textContent = "";
     var bad = legs.filter(function(l){ return l.odds && !toDecimal(l.odds); }).length;
@@ -698,7 +737,7 @@ body.locked{overflow:hidden}
       pv.textContent = "Add stake and odds to see the payout.";
     }
   }
-  function lastStake(){ for(var i=0;i<bets.length;i++){ if(bets[i].stake) return String(bets[i].stake); } return ""; }
+  function lastStake(m){ for(var i=0;i<bets.length;i++){ if(bets[i].stake && (isSingle(bets[i]) === (m === "single"))) return String(bets[i].stake); } for(var j=0;j<bets.length;j++){ if(bets[j].stake) return String(bets[j].stake); } return ""; }
   var NEW = "__new__";
   function fillNames(){
     [0,1,2].forEach(function(i){
@@ -722,14 +761,25 @@ body.locked{overflow:hidden}
       setPicker(i, match || name);
     });
   });
-  function openSheet(b){
+  var mode = "treble";
+  function addLabel(){ return mode === "single" ? "Add single" : "Add treble"; }
+  function openSheet(b, m){
     editingId = b ? b.id : null;
+    mode = b ? (isSingle(b) ? "single" : "treble") : (m || "treble");
+    var single = mode === "single";
+    $("singleForm").hidden = !single; $("trebleForm").hidden = single;
+    $("jointNote").textContent = "";
+    $("jointNote").appendChild(document.createTextNode("Joint bet for "));
+    $("jointNote").appendChild(el("b",null, MEMBERS.length > 1 ? MEMBERS.slice(0,-1).join(", ") + " & " + MEMBERS[MEMBERS.length-1] : (MEMBERS[0]||"everyone")));
     fillNames();
-    $("sheetTitle").textContent = b ? "Edit treble" : "New treble";
-    $("saveBtn").textContent = b ? "Save changes" : "Add treble";
-    $("fStake").value = b ? String(b.stake||"") : lastStake();
-    var legs = b ? legsOf(b) : [];
-    var prevNames = bets.length ? legsOf(bets[0]) : [];
+    $("sheetTitle").textContent = b ? (single ? "Edit single" : "Edit treble") : (single ? "New single" : "New treble");
+    $("saveBtn").textContent = b ? "Save changes" : addLabel();
+    $("fStake").value = b ? String(b.stake||"") : lastStake(mode);
+    var sl = b && single ? (b.legs||[])[0] || {} : {};
+    $("sPick").value = sl.pick || ""; $("sOdds").value = sl.odds || "";
+    var legs = b && !single ? legsOf(b) : [];
+    var lastTreble = bets.filter(function(x){ return !isSingle(x); })[0];
+    var prevNames = lastTreble ? legsOf(lastTreble) : [];
     [0,1,2].forEach(function(i){
       var L = legs[i];
       setPicker(i, L ? L.name : (prevNames[i] ? prevNames[i].name : MEMBERS[i % MEMBERS.length]));
@@ -748,14 +798,16 @@ body.locked{overflow:hidden}
     }
     updatePreview();
     $("sheetRoot").classList.add("open");
-    setTimeout(function(){ ($("fStake").value ? $("f0") : $("fStake")).focus(); }, 60);
+    setTimeout(function(){ ($("fStake").value ? (single ? $("sPick") : $("f0")) : $("fStake")).focus(); }, 60);
   }
   function closeSheet(){ $("sheetRoot").classList.remove("open"); editingId = null; }
-  $("fab").addEventListener("click",function(){ openSheet(null); });
+  $("fabTreble").addEventListener("click",function(){ openSheet(null, "treble"); });
+  $("fabSingle").addEventListener("click",function(){ openSheet(null, "single"); });
   $("cancelBtn").addEventListener("click",closeSheet);
   $("scrim").addEventListener("click",closeSheet);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape" && $("sheetRoot").classList.contains("open")) closeSheet(); });
-  ["fStake","o0","o1","o2"].forEach(function(id){ $(id).addEventListener("input",updatePreview); });
+  ["fStake","o0","o1","o2","sOdds"].forEach(function(id){ $(id).addEventListener("input",updatePreview); });
+  ["sPick","sOdds"].forEach(function(id){ $(id).addEventListener("keydown",function(e){ if(e.key==="Enter") save(); }); });
   ["fStake","x0","o0","x1","o1","x2","o2"].forEach(function(id){ $(id).addEventListener("keydown",function(e){ if(e.key==="Enter") save(); }); });
   $("saveBtn").addEventListener("click",save);
   function showError(msg){ $("fErr").textContent = msg; }
@@ -833,13 +885,27 @@ body.locked{overflow:hidden}
       else if(st === 409 || st === 422){ msg = "The bets changed elsewhere. Reloaded the latest, try again."; lastStamp = null; saving = false; await load(); }
       if(inSheet && $("sheetRoot").classList.contains("open")){ showError(msg); showBanner(""); } else showBanner(msg);
     }finally{
-      saving = false; $("saveBtn").disabled = false; $("saveBtn").textContent = editingId ? "Save changes" : "Add treble";
+      saving = false; $("saveBtn").disabled = false; $("saveBtn").textContent = editingId ? "Save changes" : addLabel();
     }
   }
 
   function save(){
     if(saving) return;
     var stake=parseFloat($("fStake").value.replace(/[£,\s]/g,""));
+    if(mode === "single"){
+      var sp = $("sPick").value.trim(), so = $("sOdds").value.trim();
+      if(!(stake>0)) return showError("Add the stake in pounds.");
+      if(!sp) return showError("Type the bet.");
+      if(!toDecimal(so)) return showError("Check the odds. Try 5/2, evens or 3.5.");
+      showError("");
+      var sold = editingId ? bets.filter(function(b){ return b.id===editingId; })[0] : null;
+      var prevLeg = sold && (sold.legs||[])[0];
+      var sfields = {type:"single", stake:Math.round(stake*100)/100, legs:[{name:JOINT, joint:true, pick:sp.slice(0,100), odds:so.slice(0,10), fixture:null, outcome:null, result: prevLeg && prevLeg.pick===sp ? (prevLeg.result||"open") : "open"}]};
+      var snext = editingId ? bets.map(function(b){ return b.id===editingId ? Object.assign({}, b, sfields) : b; })
+        : [Object.assign({id:"b" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), createdAt:Date.now()}, sfields)].concat(bets);
+      commit(snext, true);
+      return;
+    }
     var legs=formLegs();
     if(!(stake>0)) return showError("Add the stake in pounds.");
     for(var i=0;i<3;i++){
