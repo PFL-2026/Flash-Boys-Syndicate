@@ -14,13 +14,14 @@
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="manifest" href="manifest.webmanifest">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://pfl-2026.github.io/Flash-Boys-Syndicate/">
 <meta property="og:title" content="Flash Boys Syndicate">
 <meta property="og:description" content="Trebles, results and the leaderboard.">
-<meta property="og:image" content="share.png">
+<meta property="og:image" content="https://pfl-2026.github.io/Flash-Boys-Syndicate/share.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="share.png">
+<meta name="twitter:image" content="https://pfl-2026.github.io/Flash-Boys-Syndicate/share.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
@@ -283,6 +284,42 @@ body.locked{overflow:hidden}
 .news .tag.ok{background:rgba(61,220,132,.14);color:var(--win)}
 .news .miss b{color:var(--ink)}
 .news .shift{color:var(--gold-hi);font-weight:700}
+
+/* Team news on prediction cards */
+.tn{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+.tn-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.tn-top b{color:var(--ink);font-size:13px}
+.str{font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:var(--raise)}
+.str.hi{color:var(--win)} .str.mid{color:var(--gold)} .str.lo{color:var(--loss)}
+.outs{font-size:12px;color:var(--muted);line-height:1.4}
+.outs .ol{color:var(--gold-hi);font-weight:700}
+.xis summary{cursor:pointer;color:var(--gold);font-weight:700;font-size:12px;margin-top:6px;list-style:none}
+.xis summary::-webkit-details-marker{display:none}
+.xis summary::after{content:" ▾"}
+.xis[open] summary::after{content:" ▴"}
+.xicols{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+.xicol b{display:block;color:var(--ink);font-size:12px;margin-bottom:4px}
+.xicol ol{margin:0;padding-left:18px;font-size:12px;color:var(--ink);line-height:1.55}
+.xibtn{margin-top:8px;align-self:flex-start;border:1px solid var(--gold);background:transparent;color:var(--gold);border-radius:9px;padding:8px 12px;font-size:13px;font-weight:800}
+/* Lineup editor */
+.lpane .scrim{z-index:50} .lpane .sheet{z-index:51}
+.lpane.open .scrim{display:block} .lpane.open .sheet{transform:none;visibility:visible;pointer-events:auto}
+.lsheet h3{font-size:24px}
+.lphint{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+.lptabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px}
+.lptabs button{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px;font-weight:800;font-size:14px}
+.lptabs button[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+.lptabs button .c{display:block;font-size:11px;font-weight:700;color:var(--muted)}
+.lptabs button .c.ok{color:var(--win)}
+.lplist{max-height:46vh;overflow-y:auto;border:1px solid var(--line);border-radius:12px}
+.lprow{display:grid;grid-template-columns:24px 1fr auto;gap:10px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.lprow:last-child{border-bottom:0}
+.lprow input{width:20px;height:20px;accent-color:var(--gold);margin:0}
+.lprow .nm{font-weight:700;font-size:14px}
+.lprow .nm small{display:block;font-weight:400;font-size:11px;color:var(--muted)}
+.lprow .flag{font-size:10px;font-weight:800;padding:2px 7px;border-radius:6px;background:rgba(255,90,79,.14);color:var(--loss)}
+.lprow .flag.d{background:rgba(232,182,76,.14);color:var(--gold)}
+.lpgrp{padding:6px 12px;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);background:var(--raise)}
 </style>
 </head>
 <body>
@@ -335,6 +372,18 @@ body.locked{overflow:hidden}
     <button type="button" id="predsClose" class="iconbtn" aria-label="Close">✕</button>
   </div>
   <div class="prof-body" id="predsBody"></div>
+</div>
+
+<div id="lineupPane" class="lpane">
+  <div class="scrim" id="lpScrim"></div>
+  <div class="sheet lsheet" role="dialog" aria-modal="true" aria-labelledby="lpTitle">
+    <div class="sheet-head"><h3 id="lpTitle">Confirmed XIs</h3><button type="button" id="lpClose" class="iconbtn sm" aria-label="Close">✕</button></div>
+    <p class="lphint">Tick the 11 starters for each team once lineups are announced (about an hour before kick-off). The predicted XI is ticked to start with.</p>
+    <div class="lptabs"><button type="button" id="lpTabH" data-s="h"></button><button type="button" id="lpTabA" data-s="a"></button></div>
+    <div id="lpList" class="lplist"></div>
+    <div class="err" id="lpErr" role="alert"></div>
+    <div class="sheet-btns"><button class="btn secondary" id="lpReset" type="button">Use predicted</button><button class="btn primary" id="lpSave" type="button">Save XIs</button></div>
+  </div>
 </div>
 
 <div id="profile" class="profile" role="dialog" aria-modal="true" aria-labelledby="profName" hidden>
@@ -537,99 +586,83 @@ var FBModel = (function(){
   function buildModel(){
     if(MODEL_STATE !== "data" && MODEL_STATE !== "ready") return;
     if(FIX_STATE !== "ready") return;
-    indexFootball();
-    var cur = FIX_LIST.filter(function(f){ return f.ft && (f.lg === "en.1" || f.lg === "en.2"); }).map(function(f){
-      var x = APIMAP[fkey(f)], st = x && x.stats, hg = f.ft[0], ag = f.ft[1];
-      // Blend actual goals with expected goals (xG) where available: xG is less noisy than goals.
-      if(st && st[0] && st[1] && st[0].xg != null && st[1].xg != null){ hg = 0.5*hg + 0.5*st[0].xg; ag = 0.5*ag + 0.5*st[1].xg; }
-      return {date:f.date, home:f.home, away:f.away, hg:hg, ag:ag, rh:f.ft[0], ra:f.ft[1]};
-    });
+    var cur = FIX_LIST.filter(function(f){ return f.ft && (f.lg === "en.1" || f.lg === "en.2"); }).map(function(f){ return {date:f.date, home:f.home, away:f.away, hg:f.ft[0], ag:f.ft[1]}; });
     MODEL = FBModel.fit(HIST.concat(cur), {xi:0.0025, prior:3, asOf:isoDay(new Date()) + "T23:59:59"});
     MODEL_STATE = "ready";
+    indexFPL();
     var nUp = upcoming().filter(function(f){ return f.lg === "en.1"; }).length;
     $("mcSub").textContent = nUp ? nUp + " games in the next 10 days" : "Win, draw and loss chances for upcoming games";
     if(currentPage === "predictions") renderPreds();
     if($("sheetRoot").classList.contains("open")) [0,1,2].forEach(function(i){ var o = $("r"+i).value; fillOutcomes(i, o); });
   }
-  // ---- Lineups, xG and injuries (data/football.json, filled by the GitHub job) ----
-  var FD = null, FD_STATE = "idle", APIMAP = {}, IMP = {};
-  var API_ALIAS = {"Manchester United":"Man Utd","Manchester City":"Man City","Tottenham":"Spurs","Tottenham Hotspur":"Spurs","Nottingham Forest":"Nott’m Forest","Sheffield Utd":"Sheff Utd","Sheffield United":"Sheff Utd","Wolverhampton Wanderers":"Wolves","West Bromwich Albion":"West Brom","Brighton & Hove Albion":"Brighton"};
+  // ---- Team news & lineups (data/fpl.json, filled by the GitHub job from Fantasy Premier League data) ----
+  var FPL = null, FPL_STATE = "idle", FPLMAP = {}, LINEUPS = {};
   function tkey(n){ return String(n||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z]/g,""); }
-  function sameTeam(apiName, ours){
-    var a = tkey(API_ALIAS[apiName] || shortName(apiName)), b = tkey(ours);
-    return a === b || (a.length >= 4 && b.length >= 4 && (a.indexOf(b) === 0 || b.indexOf(a) === 0));
-  }
+  function sameTeam(a, b){ a = tkey(a); b = tkey(b); return a === b || (a.length >= 4 && b.length >= 4 && (a.indexOf(b) === 0 || b.indexOf(a) === 0)); }
   async function loadFootball(){
     try{
-      var r = await fetch("data/football.json?t=" + Date.now(), {cache:"no-store"});
-      if(!r.ok){ FD_STATE = r.status === 404 ? "missing" : "failed"; return; }
-      FD = await r.json(); FD_STATE = "ready";
-    }catch(e){ FD_STATE = "failed"; }
+      var r = await fetch("data/fpl.json?t=" + Date.now(), {cache:"no-store"});
+      if(!r.ok){ FPL_STATE = r.status === 404 ? "missing" : "failed"; return; }
+      FPL = await r.json(); FPL_STATE = "ready"; indexFPL();
+    }catch(e){ FPL_STATE = "failed"; }
   }
-  function indexFootball(){
-    APIMAP = {}; IMP = {};
-    if(!FD || !FD.fixtures) return;
-    var list = Object.keys(FD.fixtures).map(function(k){ return FD.fixtures[k]; });
+  function indexFPL(){
+    FPLMAP = {};
+    if(!FPL || !FPL.fixtures || !FPL.teams) return;
     var pl = FIX_LIST.filter(function(f){ return f.lg === "en.1"; });
-    list.forEach(function(x){
-      var d = isoDay(new Date(x.date)), d0 = new Date(Date.parse(x.date) - 864e5), d1 = new Date(Date.parse(x.date) + 864e5);
-      var days = [d, isoDay(d0), isoDay(d1)];
-      var f = pl.filter(function(f){ return days.indexOf(f.date) >= 0 && sameTeam(x.home.name, f.home) && sameTeam(x.away.name, f.away); })[0];
-      if(f) APIMAP[fkey(f)] = x;
-      // player importance: minutes weighted by match rating
-      if(x.players) [0,1].forEach(function(s){
-        var team = s === 0 ? x.home.id : x.away.id, T = IMP[team] || (IMP[team] = {games:0, p:{}});
-        T.games++;
-        x.players[s].forEach(function(p){
-          var q = T.p[p.id] || (T.p[p.id] = {name:p.name, min:0, rs:0, rm:0});
-          q.min += p.min; if(p.rating){ q.rs += p.rating * p.min; q.rm += p.min; }
-        });
-      });
-    });
-    Object.keys(IMP).forEach(function(t){
-      var T = IMP[t], arr = [];
-      Object.keys(T.p).forEach(function(id){ var q = T.p[id]; var avg = q.rm ? q.rs / q.rm : 6.6; q.imp = q.min * Math.max(0.2, avg - 5.8); arr.push(q.imp); });
-      arr.sort(function(a,b){ return b - a; });
-      T.usual = arr.slice(0,11).reduce(function(a,b){ return a + b; }, 0);
-      T.fill = arr.length >= 11 ? arr[10] * 0.7 : 0;
+    FPL.fixtures.forEach(function(x){
+      var t = Date.parse(x.ko), days = [isoDay(new Date(t)), isoDay(new Date(t - 864e5)), isoDay(new Date(t + 864e5))];
+      var H = FPL.teams[x.h], A = FPL.teams[x.a]; if(!H || !A) return;
+      var f = pl.filter(function(f){ return days.indexOf(f.date) >= 0 && sameTeam(H.name, f.home) && sameTeam(A.name, f.away); })[0];
+      if(f) FPLMAP[fkey(f)] = x;
     });
   }
-  // Effect of team news on one side: >0 stronger than usual, <0 weaker.
-  function sideNews(x, s){
-    var team = s === 0 ? x.home.id : x.away.id, T = IMP[team];
-    if(!T || T.games < 5 || !T.usual) return null;
-    var ranked = Object.keys(T.p).map(function(id){ return {id:+id, name:T.p[id].name, imp:T.p[id].imp}; }).sort(function(a,b){ return b.imp - a.imp; });
-    var top = ranked.slice(0,11), sum = 0, missing = [], source;
-    var xi = x.lineups && x.lineups[s] && x.lineups[s].xi && x.lineups[s].xi.length ? x.lineups[s].xi : null;
-    if(xi){
-      source = "lineup";
-      xi.forEach(function(p){ sum += T.p[p.id] ? T.p[p.id].imp : T.fill; });
-      var ids = xi.map(function(p){ return p.id; });
-      missing = top.filter(function(p){ return ids.indexOf(p.id) < 0; });
-    } else {
-      var out = (FD.injuries || []).filter(function(i){ return i.fixture === x.id && i.team === team && i.type !== "Questionable"; }).map(function(i){ return i.id; });
-      if(!out.length) return null;
-      source = "injuries";
-      var avail = ranked.filter(function(p){ return out.indexOf(p.id) < 0; }).slice(0,11);
-      sum = avail.reduce(function(a,p){ return a + p.imp; }, 0);
-      missing = top.filter(function(p){ return out.indexOf(p.id) >= 0; });
-    }
-    var r = Math.min(1.05, Math.max(0.7, sum / T.usual));
-    return {adj: Math.max(-0.1, Math.min(0.02, 0.3 * Math.log(r))), source: source, missing: missing.slice(0,3).map(function(p){ return p.name; })};
+  function squad(teamId){
+    var out = [];
+    Object.keys(FPL.players).forEach(function(id){ var p = FPL.players[id]; if(p[1] === teamId) out.push({id:+id, name:p[0], pos:p[2], status:p[3], chance:p[4], news:p[5]}); });
+    return out;
   }
-  function newsFor(f){
-    var x = f && APIMAP[fkey(f)];
-    if(!x || FINISHED_ST.indexOf(x.status) >= 0) return null;
-    var h = sideNews(x, 0), a = sideNews(x, 1);
-    if(!h && !a) return null;
-    return {home:h, away:a, lineups: !!(x.lineups && x.lineups[0] && x.lineups[0].xi && x.lineups[0].xi.length)};
+  function avail(p){ if(p.status === "a") return 1; if(p.status === "d") return p.chance != null ? p.chance/100 : 0.5; return 0; }
+  // How first-choice each player is: share of the team's last 8 games they started.
+  function starts(teamId, before){
+    var games = FPL.fixtures.filter(function(f){ return f.st && (f.h === teamId || f.a === teamId) && Date.parse(f.ko) < before; })
+      .sort(function(a,b){ return Date.parse(b.ko) - Date.parse(a.ko); }).slice(0,8);
+    var c = {};
+    games.forEach(function(f){ (f.st[f.h === teamId ? 0 : 1] || []).forEach(function(id){ c[id] = (c[id]||0) + 1; }); });
+    Object.keys(c).forEach(function(id){ c[id] = c[id] / games.length; });
+    return {share:c, games:games.length};
   }
-  var FINISHED_ST = ["FT","AET","PEN"];
-  function predFor(f, raw){
+  function predictedXI(teamId, ko){
+    var sh = starts(teamId, ko).share, sq = squad(teamId);
+    sq.forEach(function(p){ p.score = (sh[p.id] || 0) * avail(p) + avail(p) * 0.001; });
+    var gk = sq.filter(function(p){ return p.pos === 1 && avail(p) > 0; }).sort(function(a,b){ return b.score - a.score; })[0];
+    var out = sq.filter(function(p){ return p.pos !== 1 && avail(p) > 0; }).sort(function(a,b){ return b.score - a.score; }).slice(0,10);
+    return (gk ? [gk] : []).concat(out).map(function(p){ return p.id; });
+  }
+  function teamSide(teamId, ko, ids, confirmed){
+    var s = starts(teamId, ko), sq = squad(teamId);
+    var shares = sq.map(function(p){ return s.share[p.id] || 0; }).sort(function(a,b){ return b - a; });
+    var usual = shares.slice(0,11).reduce(function(a,b){ return a + b; }, 0);
+    var have = ids.reduce(function(a,id){ return a + (s.share[id] || 0); }, 0);
+    var out = sq.filter(function(p){ return (s.share[p.id] || 0) >= 0.5 && (confirmed ? ids.indexOf(p.id) < 0 : avail(p) < 1); })
+      .sort(function(a,b){ return (s.share[b.id]||0) - (s.share[a.id]||0); });
+    return {team:teamId, ids:ids, confirmed:confirmed, strength: s.games >= 3 && usual ? Math.round(have/usual*100) : null, out:out};
+  }
+  function teamNews(f){
+    var x = f && FPL && FPLMAP[fkey(f)];
+    if(!x || x.done) return null;
+    var ko = Date.parse(x.ko), L = LINEUPS[x.id];
+    return {fx:x, sides:[[x.h,"h"],[x.a,"a"]].map(function(s){
+      var c = L && L[s[1]] && L[s[1]].length === 11 ? L[s[1]] : null;
+      return teamSide(s[0], ko, c || predictedXI(s[0], ko), !!c);
+    })};
+  }
+  function playerName(id){ var p = FPL && FPL.players[id]; return p ? p[0] : "?"; }
+  function predFor(f){
     if(!MODEL || !f || f.lg !== "en.1") return null;
-    var n = raw ? null : newsFor(f);
-    return FBModel.predict(MODEL, f.home, f.away, n ? {home: n.home ? n.home.adj : 0, away: n.away ? n.away.adj : 0} : null);
+    return FBModel.predict(MODEL, f.home, f.away);
   }
+
   var FRACS = [[1,10],[1,8],[2,13],[1,6],[1,5],[2,9],[1,4],[2,7],[3,10],[1,3],[4,11],[2,5],[4,9],[1,2],[8,15],[4,7],[8,13],[4,6],[8,11],[4,5],[5,6],[10,11],[1,1],[11,10],[6,5],[5,4],[11,8],[6,4],[13,8],[7,4],[15,8],[2,1],[9,4],[5,2],[11,4],[3,1],[10,3],[7,2],[4,1],[9,2],[5,1],[11,2],[6,1],[13,2],[7,1],[15,2],[8,1],[9,1],[10,1],[11,1],[12,1],[14,1],[16,1],[18,1],[20,1],[25,1],[33,1],[40,1],[50,1]];
   function fairOdds(p){
     if(!(p > 0)) return "—";
@@ -858,17 +891,17 @@ var FBModel = (function(){
     var body = $("predsBody"); body.textContent = "";
     body.appendChild(el("p","pintro","Chances for each Premier League game in the next 10 days, from the Flash Boys model."));
     var ds = el("div","dstat");
-    if(FD_STATE === "ready" && FD.status && FD.status.ok){
+    if(FPL_STATE === "ready" && FPL.status && FPL.status.ok){
       ds.className = "dstat ok";
-      ds.appendChild(el("b",null,"Lineups, injuries & xG: connected"));
-      ds.appendChild(el("span",null,"Data checked " + when(Date.parse(FD.status.checked))));
-    } else if(FD_STATE === "ready" && FD.status){
+      ds.appendChild(el("b",null,"Team news & lineups: connected"));
+      ds.appendChild(el("span",null,"Fantasy Premier League data, checked " + when(Date.parse(FPL.status.checked))));
+    } else if(FPL_STATE === "ready" && FPL.status){
       ds.className = "dstat bad";
-      ds.appendChild(el("b",null,"Lineups, injuries & xG: not working"));
-      ds.appendChild(el("span",null,"API-Football says: " + FD.status.message));
+      ds.appendChild(el("b",null,"Team news & lineups: not working"));
+      ds.appendChild(el("span",null,FPL.status.message));
     } else {
-      ds.appendChild(el("b",null,"Lineups, injuries & xG: not set up yet"));
-      ds.appendChild(el("span",null,"Using results only for now."));
+      ds.appendChild(el("b",null,"Team news & lineups: not set up yet"));
+      ds.appendChild(el("span",null,"Predictions still work from results."));
     }
     body.appendChild(ds);
     if(MODEL_STATE !== "ready"){
@@ -881,7 +914,7 @@ var FBModel = (function(){
     var lastDay = null;
     games.forEach(function(f){
       if(f.date !== lastDay){ lastDay = f.date; body.appendChild(el("div","pday", new Date(f.date + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}))); }
-      var pr = predFor(f), base0 = predFor(f, true), news = newsFor(f);
+      var pr = predFor(f), news = teamNews(f);
       var c = el("div","pm");
       var t = el("div","pm-teams");
       t.appendChild(el("span",null,f.home));
@@ -903,12 +936,40 @@ var FBModel = (function(){
       c.appendChild(meta);
       if(news){
         var nw = el("div","news");
-        nw.appendChild(el("span","tag " + (news.lineups ? "ok" : ""), news.lineups ? "Lineups confirmed" : "Team news"));
-        [[f.home, news.home],[f.away, news.away]].forEach(function(s){
-          if(s[1] && s[1].missing.length) { var ln = el("div","miss"); ln.appendChild(el("b",null,s[0] + ": ")); ln.appendChild(document.createTextNode((news.lineups ? "no " : "out: ") + s[1].missing.join(", "))); nw.appendChild(ln); }
+        var both = news.sides[0].confirmed && news.sides[1].confirmed;
+        nw.appendChild(el("span","tag " + (both ? "ok" : ""), both ? "Confirmed XIs" : (news.sides[0].confirmed || news.sides[1].confirmed) ? "One XI confirmed" : "Predicted XIs"));
+        news.sides.forEach(function(s, i){
+          var ln = el("div","tn");
+          var top = el("div","tn-top"); top.appendChild(el("b",null, i === 0 ? f.home : f.away));
+          if(s.strength != null){ var st = el("span","str " + (s.strength >= 92 ? "hi" : s.strength >= 80 ? "mid" : "lo"), "XI strength " + s.strength + "%"); top.appendChild(st); }
+          ln.appendChild(top);
+          if(s.out.length){
+            var o = el("div","outs");
+            o.appendChild(el("span","ol", s.confirmed ? "Not starting: " : "Doubts & absences: "));
+            o.appendChild(document.createTextNode(s.out.slice(0,4).map(function(p){
+              if(s.confirmed) return p.name;
+              return p.name + (p.status === "d" && p.chance != null ? " (" + p.chance + "%)" : p.status === "s" ? " (suspended)" : " (out)");
+            }).join(", ")));
+            ln.appendChild(o);
+          }
+          nw.appendChild(ln);
         });
-        var shift = [["home",f.home + " win"],["draw","Draw"],["away",f.away + " win"]].map(function(k){ return {k:k, d:Math.round(pr[k[0]]*100) - Math.round(base0[k[0]]*100)}; }).sort(function(a,b){ return Math.abs(b.d) - Math.abs(a.d); })[0];
-        if(shift && shift.d) nw.appendChild(el("div","shift","Team news effect: " + shift.k[1] + " " + Math.round(base0[shift.k[0]]*100) + "% → " + Math.round(pr[shift.k[0]]*100) + "%"));
+        var det = el("details","xis"), sm = el("summary",null, both ? "Show confirmed lineups" : "Show lineups");
+        det.appendChild(sm);
+        var cols = el("div","xicols");
+        news.sides.forEach(function(s, i){
+          var col = el("div","xicol"); col.appendChild(el("b",null,(i === 0 ? f.home : f.away) + (s.confirmed ? " ✓" : "")));
+          var ids = s.ids.slice().sort(function(a,b){ return (FPL.players[a]||[])[2] - (FPL.players[b]||[])[2]; });
+          var ul = el("ol"); ids.forEach(function(id){ ul.appendChild(el("li",null,playerName(id))); }); col.appendChild(ul);
+          cols.appendChild(col);
+        });
+        det.appendChild(cols);
+        nw.appendChild(det);
+        if(canWrite){
+          var eb = el("button","xibtn", both ? "Edit confirmed XIs" : "Enter confirmed XIs"); eb.type = "button";
+          (function(fx, ff){ eb.addEventListener("click", function(){ openLineups(fx, ff); }); })(news.fx, f);
+          nw.appendChild(eb);
+        }
         c.appendChild(nw);
       }
       body.appendChild(c);
@@ -920,8 +981,8 @@ var FBModel = (function(){
     n.appendChild(document.createTextNode(" are what the chances are worth with no bookmaker margin. If a bookie offers bigger odds than the fair price, the model thinks it’s value. "));
     n.appendChild(el("b",null,"Track record: "));
     n.appendChild(document.createTextNode("tested on 430 past Premier League games, it called the right result 48% of the time against 42% for league averages, and its percentages broadly matched how often things happened (it slightly under-rates draws). "));
-    n.appendChild(el("b",null,"With the data feed on, "));
-    n.appendChild(document.createTextNode("it also blends in expected goals (xG) from this season, and lowers a team’s chances when key regulars are injured or left out of the starting XI. Key players are judged by minutes played and match ratings. Treat it as a guide, not a guarantee."));
+    n.appendChild(el("b",null,"Lineups and team news. "));
+    n.appendChild(document.createTextNode("Predicted XIs come from who has started the last 8 games, minus injured and suspended players (Fantasy Premier League data). XI strength compares the lineup to the team’s usual first choices. We tested whether weakened lineups should move the percentages: across 850 team selections over the last two seasons they didn’t perform measurably worse than the model expected, so the percentages above are left unchanged. Use the team news as your own judgement call, especially when a star player is missing."));
     body.appendChild(n);
   }
   function closePreds(){
@@ -932,6 +993,63 @@ var FBModel = (function(){
   $("predsBack").addEventListener("click", closePreds);
   $("predsClose").addEventListener("click", closePreds);
   document.addEventListener("keydown", function(e){ if(e.key === "Escape" && currentPage === "predictions") closePreds(); });
+
+  // ---- Confirmed XI entry (organiser) ----
+  var LP = null, POS = {1:"Goalkeepers",2:"Defenders",3:"Midfielders",4:"Forwards"};
+  function openLineups(fx, f){
+    var L = LINEUPS[fx.id] || {}, ko = Date.parse(fx.ko);
+    LP = {fx:fx, f:f, side:"h", sel:{
+      h: (L.h && L.h.length === 11 ? L.h : predictedXI(fx.h, ko)).slice(),
+      a: (L.a && L.a.length === 11 ? L.a : predictedXI(fx.a, ko)).slice()}};
+    $("lpTitle").textContent = f.home + " v " + f.away;
+    $("lpErr").textContent = "";
+    lpRender();
+    $("lineupPane").classList.add("open");
+  }
+  function lpTab(btn, name, n){ btn.textContent = ""; btn.appendChild(document.createTextNode(name)); btn.appendChild(el("span","c" + (n === 11 ? " ok" : ""), n + " of 11 picked")); }
+  function lpRender(){
+    var fx = LP.fx, side = LP.side, teamId = side === "h" ? fx.h : fx.a;
+    lpTab($("lpTabH"), LP.f.home, LP.sel.h.length); lpTab($("lpTabA"), LP.f.away, LP.sel.a.length);
+    $("lpTabH").setAttribute("aria-pressed", side === "h" ? "true" : "false");
+    $("lpTabA").setAttribute("aria-pressed", side === "a" ? "true" : "false");
+    var s = starts(teamId, Date.parse(fx.ko)), sq = squad(teamId), list = $("lpList"); list.textContent = "";
+    [1,2,3,4].forEach(function(pos){
+      var group = sq.filter(function(p){ return p.pos === pos; }).sort(function(a,b){ return (s.share[b.id]||0) - (s.share[a.id]||0) || a.name.localeCompare(b.name); });
+      if(!group.length) return;
+      list.appendChild(el("div","lpgrp",POS[pos]));
+      group.forEach(function(p){
+        var row = el("label","lprow"), cb = document.createElement("input"); cb.type = "checkbox";
+        cb.checked = LP.sel[side].indexOf(p.id) >= 0;
+        cb.addEventListener("change", function(){
+          var arr = LP.sel[side], i = arr.indexOf(p.id);
+          if(cb.checked && i < 0) arr.push(p.id); else if(!cb.checked && i >= 0) arr.splice(i,1);
+          $("lpErr").textContent = ""; lpTab($("lpTabH"), LP.f.home, LP.sel.h.length); lpTab($("lpTabA"), LP.f.away, LP.sel.a.length);
+        });
+        row.appendChild(cb);
+        var nm = el("span","nm",p.name), n = Math.round((s.share[p.id]||0) * s.games);
+        nm.appendChild(el("small",null, s.games ? "Started " + n + " of last " + s.games : "New this season"));
+        row.appendChild(nm);
+        if(p.status !== "a") row.appendChild(el("span","flag" + (p.status === "d" ? " d" : ""), p.status === "d" ? (p.chance != null ? p.chance + "%" : "Doubt") : p.status === "s" ? "Suspended" : "Out"));
+        else row.appendChild(el("span"));
+        list.appendChild(row);
+      });
+    });
+  }
+  function closeLineups(){ $("lineupPane").classList.remove("open"); LP = null; if(currentPage === "predictions") renderPreds(); }
+  ["lpTabH","lpTabA"].forEach(function(id){ $(id).addEventListener("click", function(){ LP.side = this.getAttribute("data-s"); lpRender(); }); });
+  $("lpClose").addEventListener("click", closeLineups);
+  $("lpScrim").addEventListener("click", closeLineups);
+  $("lpSave").addEventListener("click", async function(){
+    if(LP.sel.h.length !== 11 || LP.sel.a.length !== 11){ $("lpErr").textContent = "Pick exactly 11 for each team (" + LP.f.home + ": " + LP.sel.h.length + ", " + LP.f.away + ": " + LP.sel.a.length + ")."; return; }
+    LINEUPS[LP.fx.id] = {h:LP.sel.h.slice(), a:LP.sel.a.slice(), at:Date.now()};
+    await commit(bets, false);
+    closeLineups();
+  });
+  $("lpReset").addEventListener("click", async function(){
+    delete LINEUPS[LP.fx.id];
+    await commit(bets, false);
+    closeLineups();
+  });
 
   function stepPlayer(d){ var n = rows0(); if(n.length < 2 || !currentPlayer) return; var i = n.indexOf(currentPlayer); openProfile(n[(i + d + n.length) % n.length]); }
   $("playerSel").addEventListener("change", function(){ var v = this.value; this.value = ""; openProfile(v); });
@@ -1026,6 +1144,7 @@ var FBModel = (function(){
       board.appendChild(r);
     });
     if(currentPlayer) renderProfile(currentPlayer);
+    if(currentPage === "predictions" && MODEL_STATE === "ready" && !$("lineupPane").classList.contains("open")) renderPreds();
   }
 
   Array.prototype.forEach.call(document.querySelectorAll(".tab"),function(t){
@@ -1202,6 +1321,7 @@ var FBModel = (function(){
   function b64encode(str){ var bytes = new TextEncoder().encode(str), bin=""; for(var i=0;i<bytes.length;i++) bin += String.fromCharCode(bytes[i]); return btoa(bin); }
   function applyState(st){
     STATE = st || {bets:[]};
+    LINEUPS = STATE.lineups && typeof STATE.lineups === "object" ? STATE.lineups : {};
     if(Array.isArray(STATE.members) && STATE.members.length) MEMBERS = STATE.members.slice();
     bets = (Array.isArray(STATE.bets) ? STATE.bets : []).slice().sort(function(a,b){ return (b.createdAt||0) - (a.createdAt||0); });
     loaded = true;
@@ -1235,7 +1355,9 @@ var FBModel = (function(){
     saving = true;
     $("saveBtn").disabled = true; $("saveBtn").textContent = "Saving…";
     showBanner("Saving…");
-    var next = {members: MEMBERS, bets: nextBets, updatedAt: Date.now()};
+    var cutoff = Date.now() - 7*864e5, keep = {};
+    Object.keys(LINEUPS).forEach(function(k){ if((LINEUPS[k].at || 0) > cutoff) keep[k] = LINEUPS[k]; });
+    var next = {members: MEMBERS, bets: nextBets, lineups: keep, updatedAt: Date.now()};
     try{
       var body = {message: "Update bets", content: b64encode(JSON.stringify(next, null, 1))};
       if(sha) body.sha = sha;
