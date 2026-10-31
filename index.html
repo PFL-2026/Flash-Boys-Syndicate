@@ -676,17 +676,19 @@ var FBModel = (function(){
   function teamMatch(a, ours){ var n = ESPN_ALIAS[a] || a; return sameTeam(n, ours) || sameTeam(shortName(n), ours); }
   function mergeResults(){
     if(!FPL || !FIX_LIST.length) return;
-    var res = FPL.results || [];
+    var res = FPL.results || [], added = 0;
     FIX_LIST.forEach(function(f){
       if(f.ft) return;
-      if(f.lg === "en.1"){ var x = FPLMAP[fkey(f)]; if(x && x.done && x.hs != null && x.as != null){ f.ft = [x.hs, x.as]; f.src = "FPL"; return; } }
+      if(f.lg === "en.1"){ var x = FPLMAP[fkey(f)]; if(x && x.done && x.hs != null && x.as != null){ f.ft = [x.hs, x.as]; f.src = "FPL"; added++; return; } }
       res.some(function(r){
         if(r.lg !== f.lg) return false;
         var t = Date.parse(r.ko), days = [isoDay(new Date(t)), isoDay(new Date(t - 864e5)), isoDay(new Date(t + 864e5))];
         if(days.indexOf(f.date) < 0 || !teamMatch(r.home, f.home) || !teamMatch(r.away, f.away)) return false;
-        f.ft = [r.hs, r.as]; f.src = "ESPN"; return true;
+        f.ft = [r.hs, r.as]; f.src = "ESPN"; added++; return true;
       });
     });
+    // new results in: redraw the bets so legs settle straight away
+    if(added && typeof render === "function") setTimeout(render, 0);
   }
   function squad(teamId){
     var out = [];
