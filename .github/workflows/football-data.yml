@@ -20,8 +20,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Fetch team news, lineups and xG (FPL + ESPN)
+      - name: Fetch team news, lineups, xG and exchange odds
         run: node scripts/fetch-football.mjs
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
       - name: Save to repo
         run: |
           git config user.name "flash-boys-bot"
