@@ -332,7 +332,7 @@ body.locked{overflow:hidden}
 .psel select{appearance:none;-webkit-appearance:none;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 36px 12px 14px;font-size:16px;font-weight:800;color:var(--gold);
   background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px;background-repeat:no-repeat}
 .pgw{font-weight:800;color:var(--gold);padding:4px 2px}
-.pseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.pseg{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
 .pseg button{border:0;background:transparent;border-radius:9px;padding:10px 4px;font-size:13px;font-weight:800;color:var(--muted)}
 .pseg button[aria-pressed="true"]{background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#0A0A0B}
 .sg{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px;position:relative;overflow:hidden}
@@ -457,12 +457,12 @@ body.locked{overflow:hidden}
       <label class="stake"><span>£</span><input id="fStake" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Stake" aria-label="Stake in pounds"></label></div>
     <div class="single-form" id="singleForm" hidden>
       <p class="joint" id="jointNote"></p>
-      <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Single odds"></div>
+      <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Single odds"></div>
     </div>
     <div class="legs-form" id="trebleForm">
-      <div class="leg-card"><select id="n0" class="leg-name" aria-label="Leg 1 picked by"></select><select id="f0" class="leg-fix" aria-label="Leg 1 fixture"></select><select id="r0" class="leg-out" aria-label="Leg 1 result"></select><input id="x0" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 1 bet" hidden><input id="o0" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Leg 1 odds"></div>
-      <div class="leg-card"><select id="n1" class="leg-name" aria-label="Leg 2 picked by"></select><select id="f1" class="leg-fix" aria-label="Leg 2 fixture"></select><select id="r1" class="leg-out" aria-label="Leg 2 result"></select><input id="x1" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 2 bet" hidden><input id="o1" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Leg 2 odds"></div>
-      <div class="leg-card"><select id="n2" class="leg-name" aria-label="Leg 3 picked by"></select><select id="f2" class="leg-fix" aria-label="Leg 3 fixture"></select><select id="r2" class="leg-out" aria-label="Leg 3 result"></select><input id="x2" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 3 bet" hidden><input id="o2" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Odds" aria-label="Leg 3 odds"></div>
+      <div class="leg-card"><select id="n0" class="leg-name" aria-label="Leg 1 picked by"></select><select id="f0" class="leg-fix" aria-label="Leg 1 fixture"></select><select id="r0" class="leg-out" aria-label="Leg 1 result"></select><input id="x0" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 1 bet" hidden><input id="o0" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 1 odds"></div>
+      <div class="leg-card"><select id="n1" class="leg-name" aria-label="Leg 2 picked by"></select><select id="f1" class="leg-fix" aria-label="Leg 2 fixture"></select><select id="r1" class="leg-out" aria-label="Leg 2 result"></select><input id="x1" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 2 bet" hidden><input id="o1" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 2 odds"></div>
+      <div class="leg-card"><select id="n2" class="leg-name" aria-label="Leg 3 picked by"></select><select id="f2" class="leg-fix" aria-label="Leg 3 fixture"></select><select id="r2" class="leg-out" aria-label="Leg 3 result"></select><input id="x2" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet" aria-label="Leg 3 bet" hidden><input id="o2" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 3 odds"></div>
     </div>
     <div class="err" id="fErr" role="alert"></div>
     <div class="preview" id="preview"></div>
@@ -735,13 +735,8 @@ var FBModel = (function(){
     return FBModel.predict(MODEL, f.home, f.away);
   }
 
-  var FRACS = [[1,10],[1,8],[2,13],[1,6],[1,5],[2,9],[1,4],[2,7],[3,10],[1,3],[4,11],[2,5],[4,9],[1,2],[8,15],[4,7],[8,13],[4,6],[8,11],[4,5],[5,6],[10,11],[1,1],[11,10],[6,5],[5,4],[11,8],[6,4],[13,8],[7,4],[15,8],[2,1],[9,4],[5,2],[11,4],[3,1],[10,3],[7,2],[4,1],[9,2],[5,1],[11,2],[6,1],[13,2],[7,1],[15,2],[8,1],[9,1],[10,1],[11,1],[12,1],[14,1],[16,1],[18,1],[20,1],[25,1],[33,1],[40,1],[50,1]];
-  function fairOdds(p){
-    if(!(p > 0)) return "—";
-    var t = 1/p - 1, best = FRACS[0], bd = Infinity;
-    FRACS.forEach(function(f){ var d = Math.abs(Math.log((f[0]/f[1]) / t)); if(d < bd){ bd = d; best = f; } });
-    return best[0] === best[1] ? "Evens" : best[0] + "/" + best[1];
-  }
+  function fairOdds(p){ return p > 0 ? (1/p).toFixed(2) : "—"; }
+
   function pct(p){ return Math.round(p*100) + "%"; }
 
   // ---- Fixtures (openfootball, free, no key) ----
@@ -786,7 +781,7 @@ var FBModel = (function(){
     return {result: act === l.outcome ? "won" : "lost", score: a + "–" + b};
   }
   function isSingle(b){ return b && b.type === "single"; }
-  function oddsText(b){ return isSingle(b) ? ((b.legs||[])[0]||{}).odds || "" : frac(comboOf(b)); }
+  function oddsText(b){ return isSingle(b) ? dispOdds(((b.legs||[])[0]||{}).odds) : frac(comboOf(b)); }
   var JOINT = "All of us";
   function legsOf(b){
     return (Array.isArray(b.legs) ? b.legs : []).map(function(l){
@@ -816,7 +811,8 @@ var FBModel = (function(){
     return null;
   }
   function potentialOf(b){ return (Number(b.stake)||0) * comboOf(b); }
-  function frac(dec){ var f = dec - 1; return (f >= 10 ? Math.round(f) : Math.round(f*10)/10) + "/1"; }
+  function frac(dec){ return dec > 0 ? dec.toFixed(2) : "—"; } // all odds shown as decimals
+  function dispOdds(s){ var d = toDecimal(s); return d ? d.toFixed(2) : (s || ""); }
   function when(ts){
     if(!ts) return "";
     var d = new Date(ts), now = new Date();
@@ -843,11 +839,11 @@ var FBModel = (function(){
     var lt = el("div","lt"); lt.appendChild(el("small",null,l.name||"Someone")); lt.appendChild(el("span",null,l.pick||""));
     var fx = [];
     if(l.fixture) fx.push(l.fixture.home + " v " + l.fixture.away + (l.score ? " " + l.score : " · " + new Date(l.fixture.date + "T12:00:00").toLocaleDateString("en-GB",{weekday:"short"})));
-    if(canWrite && l.odds) fx.push(l.odds);
+    if(canWrite && l.odds) fx.push(dispOdds(l.odds));
     if(fx.length) lt.appendChild(el("small","fx",fx.join(" · ")));
     li.appendChild(lt);
     var right = el("div","leg-right");
-    if(!canWrite) right.appendChild(el("span","lo",l.odds||""));
+    if(!canWrite) right.appendChild(el("span","lo",dispOdds(l.odds)));
     if(canWrite){
       var ctl = el("div","ctl");
       [["won","w","✓","Won"],["lost","l","✕","Lost"],["void","v","V","Void"]].forEach(function(o){
@@ -943,7 +939,7 @@ var FBModel = (function(){
     settled.forEach(function(x){ form.appendChild(el("i",x.l.result)); });
     fw.appendChild(form); ex.appendChild(fw);
     var bo = el("span",null,"Best odds landed ");
-    bo.appendChild(el("b",null, landedOdds.length ? landedOdds[0].l.odds : "—")); ex.appendChild(bo);
+    bo.appendChild(el("b",null, landedOdds.length ? dispOdds(landedOdds[0].l.odds) : "—")); ex.appendChild(bo);
     body.appendChild(ex);
     var h = el("h2",null,"Picks"); body.appendChild(h);
     if(!picks.length){ body.appendChild(el("div","empty","Their picks will show here once they’re in a treble.")); return; }
@@ -953,7 +949,7 @@ var FBModel = (function(){
       li.appendChild(el("span","pd",shortDate(x.b.createdAt)));
       var mid = el("span","pp",l.pick||""); if(l.fixture) mid.appendChild(el("span","pf",l.fixture.home + " v " + l.fixture.away + (l.score ? " · " + l.score : "")));
       li.appendChild(mid);
-      var right = el("span","pr"); right.appendChild(el("b",null,l.odds||"")); right.appendChild(el("span","chip " + r, r==="won"?"Landed":r==="lost"?"Lost":r==="void"?"Void":"Waiting"));
+      var right = el("span","pr"); right.appendChild(el("b",null,dispOdds(l.odds))); right.appendChild(el("span","chip " + r, r==="won"?"Landed":r==="lost"?"Lost":r==="void"?"Void":"Waiting"));
       li.appendChild(right);
       ul.appendChild(li);
     });
@@ -1127,7 +1123,7 @@ var FBModel = (function(){
       box.appendChild(sel);
     } else box.appendChild(el("div","pgw","Next 10 days"));
     var seg = el("div","pseg");
-    [["games","All games"],["treble","Suggested treble"],["single","Suggested single"]].forEach(function(v){
+    [["games","All games"],["treble","Suggested treble"]].forEach(function(v){
       var b = el("button",null,v[1]); b.type = "button"; b.setAttribute("aria-pressed", PRED_VIEW === v[0] ? "true" : "false");
       b.addEventListener("click", function(){ PRED_VIEW = v[0]; renderPreds(); });
       seg.appendChild(b);
@@ -1167,42 +1163,12 @@ var FBModel = (function(){
       var prices = legs.map(function(k){ return exPrice(exch(k.f), k.code); });
       if(prices.every(Boolean)){
         var tx = prices.reduce(function(a,b){ return a*b; }, 1), eq = el("div","sg-ex");
-        var top = el("div"); top.appendChild(bfxTag()); top.appendChild(el("b",null,"equivalent " + tx.toFixed(2) + " (" + frac(tx) + ")")); eq.appendChild(top);
+        var top = el("div"); top.appendChild(bfxTag()); top.appendChild(el("b",null,"equivalent " + tx.toFixed(2))); eq.appendChild(top);
         eq.appendChild(el("small",null,"Calculated by multiplying the three match prices. The exchange doesn’t offer trebles, so this is a guide to what the market thinks each leg is worth, not a bet you can place there."));
         card.appendChild(eq);
       }
       card.appendChild(el("p","sg-value","Worth backing if the bookie pays more than " + fairOdds(p) + " for the treble. Type their odds in when you add it and the app will tell you if it’s value."));
       if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
-    } else {
-      card.appendChild(el("div","sg-h","Suggested single"));
-      if(!picks.length){ card.appendChild(el("p","sg-note","No games in this gameweek yet.")); body.appendChild(card); return; }
-      var k = picks[0];
-      card.appendChild(el("p","sg-sub","The model’s most likely result this gameweek (the banker)."));
-      card.appendChild(pickRow(k));
-      card.appendChild(el("p","sg-value","Worth backing if the bookie pays more than " + fairOdds(k.p) + "."));
-      if(canWrite){ var bs = el("button","btn primary sg-btn","Add this single to the tracker"); bs.type = "button"; bs.addEventListener("click", function(){ useSingle(k); }); card.appendChild(bs); }
-      // value option, only when exchange prices are in
-      var vals = [];
-      games.forEach(function(f){ var pr = predFor(f), ex = exch(f); if(!pr || !ex) return;
-        [["H",pr.home],["D",pr.draw],["A",pr.away]].forEach(function(s){ var d = exPrice(ex, s[0]); if(d && s[1] >= 0.25) vals.push({f:f, code:s[0], p:s[1], label:outcomeLabel(f, s[0]), e:edgeOf(s[1], d)}); });
-      });
-      vals.sort(function(a,b){ return b.e - a.e; });
-      if(vals.length && vals[0].e > 0){
-        var v = vals[0];
-        var vh = el("div","sg-h2"); vh.appendChild(document.createTextNode("Best value vs ")); vh.appendChild(bfxTag()); card.appendChild(vh);
-        card.appendChild(el("p","sg-sub","Where the model rates a result most above the exchange price (after commission). Exchange prices are very sharp, so when they disagree the market is often right. Treat this as a second opinion."));
-        card.appendChild(pickRow(v));
-        if(canWrite){ var bv = el("button","btn secondary sg-btn","Add this as a single"); bv.type = "button"; bv.addEventListener("click", function(){ useSingle(v); }); card.appendChild(bv); }
-      }
-      // a second option: most likely draw
-      var draws = games.map(function(f){ var pr = predFor(f); return pr ? {f:f, code:"D", p:pr.draw, label:"Draw"} : null; }).filter(Boolean).sort(function(a,b){ return b.p - a.p; });
-      if(draws.length){
-        var d = draws[0];
-        card.appendChild(el("div","sg-h2","Alternative: draw of the week"));
-        card.appendChild(el("p","sg-sub","The game the model thinks is most likely to be level. Bigger odds, lower chance."));
-        card.appendChild(pickRow(d));
-        if(canWrite){ var bd = el("button","btn secondary sg-btn","Add the draw as a single"); bd.type = "button"; bd.addEventListener("click", function(){ useSingle(d); }); card.appendChild(bd); }
-      }
     }
     card.appendChild(el("p","sg-note","These are the model’s most likely outcomes, not guaranteed value. It calls single results right about 48% of the time, so even a strong-looking treble usually loses."));
     body.appendChild(card);
@@ -1211,7 +1177,7 @@ var FBModel = (function(){
   function useTreble(legs){
     closePredsForSheet();
     openSheet(null, "treble");
-    legs.forEach(function(k, i){ fillFixtures(i, fkey(k.f)); fillOutcomes(i, k.code); $("o"+i).value = ""; var px = exPrice(exch(k.f), k.code); $("o"+i).placeholder = px ? "Exch " + px.toFixed(2) : "Odds"; });
+    legs.forEach(function(k, i){ fillFixtures(i, fkey(k.f)); fillOutcomes(i, k.code); $("o"+i).value = ""; var px = exPrice(exch(k.f), k.code); $("o"+i).placeholder = px ? "Exch " + px.toFixed(2) : "e.g. 2.50"; });
     updatePreview();
     setTimeout(function(){ $("o0").focus(); }, 80);
   }
@@ -1453,8 +1419,8 @@ var FBModel = (function(){
     if(mode === "single"){
       var sd = toDecimal($("sOdds").value), sst = parseFloat($("fStake").value.replace(/[£,\s]/g,""));
       var spv = $("preview"); spv.textContent = "";
-      if($("sOdds").value && !sd){ spv.textContent = "Odds not recognised. Try 5/2, evens or 3.5."; return; }
-      if(sd && sst > 0){ spv.appendChild(document.createTextNode($("sOdds").value.trim() + " · returns ")); spv.appendChild(el("b",null,gbp(sst*sd)));
+      if($("sOdds").value && !sd){ spv.textContent = "Odds not recognised. Use decimal odds, e.g. 2.50."; return; }
+      if(sd && sst > 0){ spv.appendChild(document.createTextNode(sd.toFixed(2) + " · returns ")); spv.appendChild(el("b",null,gbp(sst*sd)));
         if(SINGLE_P && SINGLE_P.pick === $("sPick").value) spv.appendChild(valueLine(SINGLE_P.p, sd)); }
       else spv.textContent = "Add stake and odds to see the payout.";
       return;
@@ -1463,7 +1429,7 @@ var FBModel = (function(){
     var pv = $("preview"); pv.textContent = "";
     var bad = legs.filter(function(l){ return l.odds && !toDecimal(l.odds); }).length;
     var ready = legs.every(function(l){ return toDecimal(l.odds); });
-    if(bad){ pv.textContent = "Odds not recognised. Try 5/2, evens or 3.5."; return; }
+    if(bad){ pv.textContent = "Odds not recognised. Use decimal odds, e.g. 2.50."; return; }
     if(ready && stake > 0){
       var dec = legs.reduce(function(a,l){ return a * toDecimal(l.odds); }, 1);
       pv.appendChild(document.createTextNode(frac(dec) + " · returns "));
@@ -1502,7 +1468,7 @@ var FBModel = (function(){
   function addLabel(){ return mode === "single" ? "Add single" : "Add treble"; }
   function openSheet(b, m){
     editingId = b ? b.id : null; SINGLE_P = null;
-    [0,1,2].forEach(function(i){ $("o"+i).placeholder = "Odds"; });
+    [0,1,2].forEach(function(i){ $("o"+i).placeholder = "e.g. 2.50"; });
     mode = b ? (isSingle(b) ? "single" : "treble") : (m || "treble");
     var single = mode === "single";
     $("singleForm").hidden = !single; $("trebleForm").hidden = single;
@@ -1638,7 +1604,7 @@ var FBModel = (function(){
       var sp = $("sPick").value.trim(), so = $("sOdds").value.trim();
       if(!(stake>0)) return showError("Add the stake in pounds.");
       if(!sp) return showError("Type the bet.");
-      if(!toDecimal(so)) return showError("Check the odds. Try 5/2, evens or 3.5.");
+      if(!toDecimal(so)) return showError("Check the odds. Use decimal odds, e.g. 2.50.");
       showError("");
       var sold = editingId ? bets.filter(function(b){ return b.id===editingId; })[0] : null;
       var prevLeg = sold && (sold.legs||[])[0];
@@ -1655,7 +1621,7 @@ var FBModel = (function(){
       if(!legs[i].key) return showError("Choose a fixture for leg " + (i+1) + ".");
       if(legs[i].custom && !legs[i].pick) return showError("Type the bet for leg " + (i+1) + ".");
       if(!legs[i].custom && !legs[i].outcome) return showError("Choose the result for leg " + (i+1) + ".");
-      if(!toDecimal(legs[i].odds)) return showError("Check the odds for leg " + (i+1) + ". Try 5/2, evens or 3.5.");
+      if(!toDecimal(legs[i].odds)) return showError("Check the odds for leg " + (i+1) + ". Use decimal odds, e.g. 2.50.");
     }
     showError("");
     var old = editingId ? bets.filter(function(b){ return b.id===editingId; })[0] : null;
