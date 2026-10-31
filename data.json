@@ -4,53 +4,6 @@
   "Jacques",
   "Des"
  ],
- "bets": [
-  {
-   "id": "bmvw4aje29ejx",
-   "createdAt": 1793433990314,
-   "stake": 75,
-   "legs": [
-    {
-     "name": "Cowles",
-     "pick": "Chelsea win",
-     "odds": "2.1",
-     "fixture": {
-      "lg": "en.1",
-      "date": "2026-10-31",
-      "home": "Chelsea",
-      "away": "Man Utd"
-     },
-     "outcome": "H",
-     "result": "open"
-    },
-    {
-     "name": "Jacques",
-     "pick": "Bournemouth win",
-     "odds": "6.2",
-     "fixture": {
-      "lg": "en.1",
-      "date": "2026-10-31",
-      "home": "Bournemouth",
-      "away": "Leeds"
-     },
-     "outcome": "H",
-     "result": "open"
-    },
-    {
-     "name": "Des",
-     "pick": "Coventry win",
-     "odds": "1.1",
-     "fixture": {
-      "lg": "en.1",
-      "date": "2026-10-31",
-      "home": "Coventry",
-      "away": "Sunderland"
-     },
-     "outcome": "H",
-     "result": "open"
-    }
-   ]
-  }
- ],
- "updatedAt": 1793433990314
+ "bets": [],
+ "updatedAt": 1793434005719
 }
