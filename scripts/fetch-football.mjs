@@ -7,6 +7,8 @@ import fs from "node:fs";
 
 const BASE = process.env.FPL_BASE || "https://fantasy.premierleague.com/api";
 const ESPN = process.env.ESPN_BASE || "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1";
+const ODDS = process.env.ODDS_BASE || "https://api.the-odds-api.com/v4/sports/soccer_epl";
+const ODDS_KEY = process.env.ODDS_API_KEY;
 const OUT = "data/fpl.json";
 const now = new Date();
 
@@ -14,6 +16,7 @@ let before = "", state = {};
 try { before = fs.readFileSync(OUT, "utf8"); state = JSON.parse(before); } catch {}
 state.live = state.live || {}; // finished gameweeks already processed: { gw: true }
 state.lineups = state.lineups || {}; // FPL fixture id -> confirmed lineups from ESPN
+state.odds = state.odds || {};       // FPL fixture id -> Betfair Exchange match odds
 
 async function get(path, base = BASE) {
   const res = await fetch(`${base}/${path}`, {
@@ -92,6 +95,49 @@ async function main() {
   // 4. Confirmed lineups from ESPN, for games from 75 minutes before kick-off to 2 hours after
   try { await lineups(boot); state.lineupStatus = { ok: true }; }
   catch (e) { console.error("ESPN lineups error:", e.message); state.lineupStatus = { ok: false, message: e.message }; }
+
+  // 5. Betfair Exchange match odds via The Odds API (only if a key is set up)
+  try { await exchangeOdds(); }
+  catch (e) { console.error("Odds error:", e.message); state.oddsStatus = Object.assign({}, state.oddsStatus, { ok: false, message: e.message, pulled: now.toISOString() }); }
+}
+
+// Free plan = 500 credits a month and one pull costs 1 credit, so pull sparingly:
+// every 3 hours normally, every 30 minutes when a game kicks off within 2 hours or is in play,
+// and back off if credits run low.
+async function exchangeOdds() {
+  if (!ODDS_KEY) { state.oddsStatus = { ok: false, message: "Not set up" }; return; }
+  const os = state.oddsStatus || {};
+  const last = os.pulled ? Date.parse(os.pulled) : 0, mins = (now - last) / 6e4;
+  const busy = state.fixtures.some((f) => { const m = (Date.parse(f.ko) - now) / 6e4; return m <= 120 && m >= -110; });
+  const low = os.remaining != null && os.remaining < 60;
+  const due = low ? mins >= 720 : busy ? mins >= 28 : mins >= 175;
+  if (!due) return;
+  const url = `${ODDS}/odds?apiKey=${encodeURIComponent(ODDS_KEY)}&regions=uk&markets=h2h&oddsFormat=decimal&bookmakers=betfair_ex_uk`;
+  const res = await fetch(url);
+  const remaining = res.headers.get("x-requests-remaining");
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`; try { const j = await res.json(); if (j.message) msg = j.message; } catch {}
+    throw new Error(msg);
+  }
+  const events = await res.json();
+  let matched = 0;
+  events.forEach((e) => {
+    const f = state.fixtures.find((x) => Math.abs(Date.parse(x.ko) - Date.parse(e.commence_time)) < 3 * 36e5
+      && sameTeam(e.home_team, state.teams[x.h].name) && sameTeam(e.away_team, state.teams[x.a].name));
+    if (!f) return;
+    const bk = (e.bookmakers || []).find((b) => b.key === "betfair_ex_uk");
+    const mk = bk && (bk.markets || []).find((m) => m.key === "h2h");
+    if (!mk) return;
+    const price = (name) => { const o = mk.outcomes.find((x) => x.name === name); return o ? o.price : null; };
+    const h = price(e.home_team), d = price("Draw"), a = price(e.away_team);
+    if (!h || !d || !a) return;
+    state.odds[f.id] = { h, d, a, at: bk.last_update || now.toISOString(), live: Date.parse(e.commence_time) < now };
+    matched++;
+  });
+  // drop odds for games that finished a while ago
+  Object.keys(state.odds).forEach((id) => { const f = state.fixtures.find((x) => String(x.id) === id); if (!f || (f.done && Date.parse(f.ko) < now - 864e5)) delete state.odds[id]; });
+  state.oddsStatus = { ok: true, pulled: now.toISOString(), remaining: remaining != null ? +remaining : null, matched };
+  console.log(`  Betfair Exchange odds: ${matched} game(s) priced (credits left this month: ${remaining ?? "?"})`);
 }
 
 // ---- name matching helpers ----
