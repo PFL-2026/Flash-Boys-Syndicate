@@ -1,0 +1,56 @@
+{
+ "members": [
+  "Cowles",
+  "Jacques",
+  "Des"
+ ],
+ "bets": [
+  {
+   "id": "bmvw49vb67eaa",
+   "createdAt": 1793433959106,
+   "stake": 75,
+   "legs": [
+    {
+     "name": "Cowles",
+     "pick": "Man City win",
+     "odds": "3.2",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-10-31",
+      "home": "Man City",
+      "away": "Brighton"
+     },
+     "outcome": "H",
+     "result": "open"
+    },
+    {
+     "name": "Jacques",
+     "pick": "Man Utd win",
+     "odds": "3.5",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-10-31",
+      "home": "Chelsea",
+      "away": "Man Utd"
+     },
+     "outcome": "A",
+     "result": "open"
+    },
+    {
+     "name": "Des",
+     "pick": "Coventry win",
+     "odds": "2.1",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-10-31",
+      "home": "Coventry",
+      "away": "Sunderland"
+     },
+     "outcome": "H",
+     "result": "open"
+    }
+   ]
+  }
+ ],
+ "updatedAt": 1793433959107
+}
