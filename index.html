@@ -637,6 +637,7 @@ var FBModel = (function(){
   function buildModel(){
     if(MODEL_STATE !== "data" && MODEL_STATE !== "ready") return;
     if(FIX_STATE !== "ready") return;
+    indexFPL();
     var cur = FIX_LIST.filter(function(f){ return f.ft && (f.lg === "en.1" || f.lg === "en.2"); }).map(function(f){ return {date:f.date, home:f.home, away:f.away, hg:f.ft[0], ag:f.ft[1]}; });
     MODEL = FBModel.fit(HIST.concat(cur), {xi:0.0025, prior:3, asOf:isoDay(new Date()) + "T23:59:59"});
     MODEL_STATE = "ready";
@@ -666,6 +667,25 @@ var FBModel = (function(){
       var H = FPL.teams[x.h], A = FPL.teams[x.a]; if(!H || !A) return;
       var f = pl.filter(function(f){ return days.indexOf(f.date) >= 0 && sameTeam(H.name, f.home) && sameTeam(A.name, f.away); })[0];
       if(f) FPLMAP[fkey(f)] = x;
+    });
+    mergeResults();
+  }
+  // Faster results: the free fixtures feed can lag days behind, so fill in final scores from
+  // official FPL results (Premier League) and ESPN's scoreboard (Championship and Bundesliga).
+  var ESPN_ALIAS = {"Borussia Mönchengladbach":"Gladbach","Bayer Leverkusen":"Leverkusen","Borussia Dortmund":"Dortmund","Eintracht Frankfurt":"Frankfurt","VfB Stuttgart":"Stuttgart","RB Leipzig":"Leipzig","SC Freiburg":"Freiburg","TSG Hoffenheim":"Hoffenheim","1. FC Union Berlin":"Union Berlin","Werder Bremen":"Werder Bremen","FC Augsburg":"Augsburg","1. FC Köln":"Köln","FC Cologne":"Köln","Hamburg SV":"Hamburg","Hamburger SV":"Hamburg","St. Pauli":"St Pauli","FC St. Pauli":"St Pauli","VfL Wolfsburg":"Wolfsburg","1. FC Heidenheim 1846":"Heidenheim","Heidenheim":"Heidenheim","SC Paderborn 07":"Paderborn","SV Elversberg":"Elversberg","FC Schalke 04":"Schalke","Bayern Munich":"Bayern","Mainz":"Mainz","Manchester United":"Man Utd","Manchester City":"Man City","Tottenham Hotspur":"Spurs","Nottingham Forest":"Nott’m Forest","Wolverhampton Wanderers":"Wolves","Brighton & Hove Albion":"Brighton","Sheffield Wednesday":"Sheff Wed","Sheffield United":"Sheff Utd","West Bromwich Albion":"West Brom","Queens Park Rangers":"QPR","Preston North End":"Preston"};
+  function teamMatch(a, ours){ var n = ESPN_ALIAS[a] || a; return sameTeam(n, ours) || sameTeam(shortName(n), ours); }
+  function mergeResults(){
+    if(!FPL || !FIX_LIST.length) return;
+    var res = FPL.results || [];
+    FIX_LIST.forEach(function(f){
+      if(f.ft) return;
+      if(f.lg === "en.1"){ var x = FPLMAP[fkey(f)]; if(x && x.done && x.hs != null && x.as != null){ f.ft = [x.hs, x.as]; f.src = "FPL"; return; } }
+      res.some(function(r){
+        if(r.lg !== f.lg) return false;
+        var t = Date.parse(r.ko), days = [isoDay(new Date(t)), isoDay(new Date(t - 864e5)), isoDay(new Date(t + 864e5))];
+        if(days.indexOf(f.date) < 0 || !teamMatch(r.home, f.home) || !teamMatch(r.away, f.away)) return false;
+        f.ft = [r.hs, r.as]; f.src = "ESPN"; return true;
+      });
     });
   }
   function squad(teamId){
@@ -764,6 +784,7 @@ var FBModel = (function(){
     });
     FIX = map; FIX_LIST = list; FIX_STATE = list.length ? "ready" : "failed";
     if($("sheetRoot").classList.contains("open")) [0,1,2].forEach(function(i){ var k=$("f"+i).value, o=$("r"+i).value; fillFixtures(i,k); fillOutcomes(i,o); });
+    if(FPL) indexFPL();
     buildModel();
     render();
   }
@@ -1683,8 +1704,13 @@ var FBModel = (function(){
   applyWriteState();
   load().then(route);
   Promise.all([loadFixtures(), loadFootball()]).then(loadHistory);
-  document.addEventListener("visibilitychange", function(){ if(document.visibilityState === "visible" && Date.now() - FIX_AT > 15*60*1000) loadFixtures(); });
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState !== "visible") return;
+    if(Date.now() - FIX_AT > 15*60*1000) loadFixtures();
+    loadFootball().then(function(){ buildModel(); render(); });
+  });
   setInterval(function(){ if(document.visibilityState === "visible") load(); }, 30000);
+  setInterval(async function(){ if(document.visibilityState !== "visible") return; await loadFootball(); buildModel(); render(); }, 5*60*1000);
   document.addEventListener("visibilitychange", function(){ if(document.visibilityState === "visible") load(); });
 })();
 </script>
