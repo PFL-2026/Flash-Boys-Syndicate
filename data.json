@@ -39,7 +39,7 @@
     {
      "name": "Des",
      "pick": "Aston Villa win",
-     "odds": "2.1",
+     "odds": "2.199",
      "fixture": {
       "lg": "en.1",
       "date": "2026-10-31",
@@ -53,5 +53,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1793451880689
+ "updatedAt": 1793452890809
 }
