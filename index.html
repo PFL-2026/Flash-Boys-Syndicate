@@ -116,8 +116,8 @@ h2::after{content:"";flex:1;height:1px;background:var(--line)}
 .brow{display:grid;grid-template-columns:20px 32px 1fr auto;gap:11px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}
 .brow:last-child{border-bottom:0}
 .rank{font-family:var(--display);font-stretch:72%;font-weight:900;font-size:20px;color:var(--muted);text-align:center}
-.brow:first-child .rank{color:var(--gold)}
-.brow:first-child .bname::after{content:" 👑";font-size:13px}
+.brow.leader .rank{color:var(--gold)}
+.brow.leader .bname::after{content:" 👑";font-size:13px}
 .bname{font-weight:700}
 .bar{height:4px;border-radius:2px;background:var(--line);margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--win));border-radius:2px}
@@ -432,8 +432,11 @@ h2::after{content:"";flex:1;height:1px;background:var(--line)}
     var rows = Object.keys(people).map(function(k){ var p=people[k]; var d=p.won+p.lost; p.rate = d ? p.won/d : -1; return p; })
       .sort(function(a,b){ return b.won - a.won || b.rate - a.rate || a.lost - b.lost; });
     var board = $("board"); board.textContent = "";
+    // Crown only for an outright leader: at least one leg landed and not level with second place.
+    var top = rows[0], next = rows[1];
+    var outright = !!top && top.won > 0 && (!next || top.won !== next.won || top.rate !== next.rate || top.lost !== next.lost);
     rows.forEach(function(p,i){
-      var r = el("div","brow");
+      var r = el("div","brow" + (i===0 && outright ? " leader" : ""));
       r.appendChild(el("span","rank",String(i+1)));
       var av = el("span","av",initials(p.name)); av.style.background = avColor(p.name); r.appendChild(av);
       var mid = el("div"); mid.appendChild(el("div","bname",p.name));
