@@ -4,53 +4,6 @@
   "Jacques",
   "Des"
  ],
- "bets": [
-  {
-   "id": "bmvw4l1ay92do",
-   "createdAt": 1793434480090,
-   "stake": 75,
-   "legs": [
-    {
-     "name": "Cowles",
-     "pick": "QPR win",
-     "odds": "1.5",
-     "fixture": {
-      "lg": "en.2",
-      "date": "2026-11-03",
-      "home": "QPR",
-      "away": "Burnley"
-     },
-     "outcome": "H",
-     "result": "open"
-    },
-    {
-     "name": "Jacques",
-     "pick": "Man Utd win",
-     "odds": "3.2",
-     "fixture": {
-      "lg": "en.1",
-      "date": "2026-10-31",
-      "home": "Chelsea",
-      "away": "Man Utd"
-     },
-     "outcome": "A",
-     "result": "open"
-    },
-    {
-     "name": "Des",
-     "pick": "Hull win",
-     "odds": "3.8",
-     "fixture": {
-      "lg": "en.1",
-      "date": "2026-10-31",
-      "home": "Hull",
-      "away": "Ipswich"
-     },
-     "outcome": "H",
-     "result": "open"
-    }
-   ]
-  }
- ],
- "updatedAt": 1793434480091
+ "bets": [],
+ "updatedAt": 1793434505899
 }
