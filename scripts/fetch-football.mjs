@@ -7,6 +7,7 @@ import fs from "node:fs";
 
 const BASE = process.env.FPL_BASE || "https://fantasy.premierleague.com/api";
 const ESPN = process.env.ESPN_BASE || "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1";
+const ESPN_ROOT = process.env.ESPN_ROOT || "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const ODDS = process.env.ODDS_BASE || "https://api.the-odds-api.com/v4/sports/soccer_epl";
 const ODDS_KEY = process.env.ODDS_API_KEY;
 const OUT = "data/fpl.json";
@@ -96,9 +97,36 @@ async function main() {
   try { await lineups(boot); state.lineupStatus = { ok: true }; }
   catch (e) { console.error("ESPN lineups error:", e.message); state.lineupStatus = { ok: false, message: e.message }; }
 
-  // 5. Betfair Exchange match odds via The Odds API (only if a key is set up)
+  // 5. Fast final scores for all three leagues from ESPN's scoreboard (today and the last 2 days)
+  try { await espnResults(); }
+  catch (e) { console.error("ESPN results error:", e.message); }
+
+  // 6. Betfair Exchange match odds via The Odds API (only if a key is set up)
   try { await exchangeOdds(); }
   catch (e) { console.error("Odds error:", e.message); state.oddsStatus = Object.assign({}, state.oddsStatus, { ok: false, message: e.message, pulled: now.toISOString() }); }
+}
+
+async function espnResults() {
+  const leagues = { "eng.1": "en.1", "eng.2": "en.2", "ger.1": "de.1" };
+  const days = [0, 1, 2].map((d) => new Date(now.getTime() - d * 864e5).toISOString().slice(0, 10).replace(/-/g, ""));
+  const out = [];
+  for (const [code, lg] of Object.entries(leagues)) {
+    for (const d of days) {
+      const sb = await get(`${code}/scoreboard?dates=${d}`, ESPN_ROOT);
+      (sb.events || []).forEach((e) => {
+        const c = e.competitions && e.competitions[0];
+        const done = e.status && e.status.type && e.status.type.completed;
+        if (!c || !done) return;
+        const home = c.competitors.find((x) => x.homeAway === "home"), away = c.competitors.find((x) => x.homeAway === "away");
+        if (!home || !away) return;
+        const hs = parseInt(home.score, 10), as = parseInt(away.score, 10);
+        if (isNaN(hs) || isNaN(as)) return;
+        out.push({ lg, ko: e.date, home: home.team.displayName || home.team.name, away: away.team.displayName || away.team.name, hs, as });
+      });
+    }
+  }
+  state.results = out;
+  console.log(`  ESPN results: ${out.length} finished game(s) in the last 3 days`);
 }
 
 // Free plan = 500 credits a month and one pull costs 1 credit, so pull sparingly:
