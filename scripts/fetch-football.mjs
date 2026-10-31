@@ -1,21 +1,25 @@
 // Flash Boys: fetch Premier League squads, injuries, fixtures, starting XIs and xG
-// from the official Fantasy Premier League API (free, no key), and save them to
-// data/fpl.json for the app. Runs on a schedule via GitHub Actions.
+// from the official Fantasy Premier League API (free, no key), plus confirmed
+// lineups from ESPN's public match feed once clubs announce them (free, no key).
+// Lineups are verified against the official FPL squad lists before being marked
+// as verified. Saves everything to data/fpl.json. Runs via GitHub Actions.
 import fs from "node:fs";
 
 const BASE = process.env.FPL_BASE || "https://fantasy.premierleague.com/api";
+const ESPN = process.env.ESPN_BASE || "https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1";
 const OUT = "data/fpl.json";
 const now = new Date();
 
 let before = "", state = {};
 try { before = fs.readFileSync(OUT, "utf8"); state = JSON.parse(before); } catch {}
 state.live = state.live || {}; // finished gameweeks already processed: { gw: true }
+state.lineups = state.lineups || {}; // FPL fixture id -> confirmed lineups from ESPN
 
-async function get(path) {
-  const res = await fetch(`${BASE}/${path}`, {
+async function get(path, base = BASE) {
+  const res = await fetch(`${base}/${path}`, {
     headers: { "User-Agent": "Mozilla/5.0 (FlashBoysSyndicate data job)", "Accept": "application/json" },
   });
-  if (!res.ok) throw new Error(`FPL ${path} → HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`${base === BASE ? "FPL" : "ESPN"} ${path} → HTTP ${res.status}`);
   return res.json();
 }
 
@@ -84,6 +88,88 @@ async function main() {
     console.log(`  Gameweek ${gw}: starting XIs for ${Object.keys(st).length} game(s)`);
   }
   state.status = { ok: true, message: "Connected", checked: now.toISOString() };
+
+  // 4. Confirmed lineups from ESPN, for games from 75 minutes before kick-off to 2 hours after
+  try { await lineups(boot); state.lineupStatus = { ok: true }; }
+  catch (e) { console.error("ESPN lineups error:", e.message); state.lineupStatus = { ok: false, message: e.message }; }
+}
+
+// ---- name matching helpers ----
+const ALIAS = { "manchester united": "man utd", "manchester city": "man city", "tottenham hotspur": "spurs", "tottenham": "spurs",
+  "nottingham forest": "nottm forest", "wolverhampton wanderers": "wolves", "brighton & hove albion": "brighton", "brighton and hove albion": "brighton",
+  "newcastle united": "newcastle", "west ham united": "west ham", "leeds united": "leeds", "sheffield united": "sheff utd",
+  "west bromwich albion": "west brom", "afc bournemouth": "bournemouth", "leicester city": "leicester", "ipswich town": "ipswich",
+  "coventry city": "coventry", "hull city": "hull", "luton town": "luton", "norwich city": "norwich", "stoke city": "stoke" };
+const plain = (s) => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/ø/g, "o").replace(/[^a-z& ]/g, "").replace(/\s+/g, " ").trim();
+const teamKey = (n) => { const p = plain(n).replace(/ fc$/, ""); return (ALIAS[p] || p).replace(/[^a-z]/g, ""); };
+const sameTeam = (a, b) => { a = teamKey(a); b = teamKey(b); return a === b || (a.length >= 4 && b.length >= 4 && (a.startsWith(b) || b.startsWith(a))); };
+const tokens = (s) => plain(s).replace(/&/g, "").split(" ").filter(Boolean);
+
+function matchPlayer(name, squad) {
+  const t = tokens(name);
+  if (!t.length) return null;
+  const scored = squad.map((p) => {
+    const full = tokens(`${p.first_name} ${p.second_name}`), web = tokens(p.web_name.replace(/\./g, " "));
+    const all = new Set([...full, ...web]);
+    let score = 0;
+    if (t.join(" ") === full.join(" ")) score = 4;                                   // exact full name
+    else if (t.every((x) => all.has(x))) score = 3;                                  // all name parts present
+    else if (web.length && t.slice(-web.length).join(" ") === web.join(" ")) score = 2; // ends with FPL short name
+    else if (t[t.length - 1] === full[full.length - 1] && t[0][0] === (full[0] || "")[0]) score = 1; // surname + initial
+    return { p, score };
+  }).filter((x) => x.score > 0).sort((a, b) => b.score - a.score);
+  if (!scored.length) return null;
+  if (scored.length > 1 && scored[1].score === scored[0].score) return null; // ambiguous: don't guess
+  return scored[0].p.id;
+}
+
+async function lineups(boot) {
+  const due = state.fixtures.filter((f) => {
+    const mins = (Date.parse(f.ko) - now) / 6e4;
+    const L = state.lineups[f.id];
+    return mins <= 75 && mins >= -120 && !(L && L.verified);
+  });
+  // tidy: keep lineups for two weeks
+  Object.keys(state.lineups).forEach((id) => { if (Date.parse(state.lineups[id].at) < now - 14 * 864e5) delete state.lineups[id]; });
+  if (!due.length) return;
+  const dates = [...new Set(due.map((f) => f.ko.slice(0, 10).replace(/-/g, "")))];
+  const events = [];
+  for (const d of dates) { const sb = await get(`scoreboard?dates=${d}`, ESPN); (sb.events || []).forEach((e) => events.push(e)); }
+  for (const f of due) {
+    const H = state.teams[f.h].name, A = state.teams[f.a].name;
+    const ev = events.find((e) => {
+      const c = (e.competitions && e.competitions[0] && e.competitions[0].competitors) || [];
+      const home = c.find((x) => x.homeAway === "home"), away = c.find((x) => x.homeAway === "away");
+      return home && away && Math.abs(Date.parse(e.date) - Date.parse(f.ko)) < 3 * 36e5
+        && sameTeam(home.team.displayName || home.team.name, H) && sameTeam(away.team.displayName || away.team.name, A);
+    });
+    if (!ev) { console.log(`  Lineups: ${H} v ${A} not found on ESPN yet`); continue; }
+    const sum = await get(`summary?event=${ev.id}`, ESPN);
+    const rosters = sum.rosters || [];
+    const sides = ["home", "away"].map((ha, i) => rosters.find((r) => r.homeAway === ha) || rosters[i]);
+    const out = { src: "ESPN", event: ev.id, at: now.toISOString() };
+    let complete = true, verified = true;
+    sides.forEach((r, i) => {
+      const teamId = i === 0 ? f.h : f.a;
+      const squad = boot.elements.filter((p) => p.team === teamId);
+      const starters = r && Array.isArray(r.roster) ? r.roster.filter((p) => p.starter) : [];
+      if (starters.length !== 11) { complete = false; return; }
+      const ids = [], names = [], unmatched = [];
+      starters.forEach((p) => {
+        const nm = (p.athlete && (p.athlete.displayName || p.athlete.fullName)) || "?";
+        const id = matchPlayer(nm, squad);
+        names.push(nm); if (id) ids.push(id); else { ids.push(null); unmatched.push(nm); }
+      });
+      const key = i === 0 ? "h" : "a";
+      out[key] = ids; out[key + "n"] = names; out[key + "f"] = r.formation || null;
+      if (unmatched.length) out[key + "u"] = unmatched;
+      if (unmatched.length > 1) verified = false; // allow one (e.g. a debutant not yet in FPL)
+    });
+    if (!complete) { console.log(`  Lineups: ${H} v ${A} not announced yet`); continue; }
+    out.verified = verified;
+    state.lineups[f.id] = out;
+    console.log(`  Lineups: ${H} v ${A} confirmed${verified ? " and verified" : " (names not fully verified)"}`);
+  }
 }
 
 try {
