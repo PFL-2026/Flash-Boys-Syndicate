@@ -371,6 +371,46 @@ body.locked{overflow:hidden}
 .sg-ex small{display:block;font-size:11px;color:var(--muted);margin-top:6px;line-height:1.45}
 .sg-h2 .bfx{font-size:11px;margin-left:4px}
 .dstat b .bfx{margin-right:2px}
+
+/* Predictions, compact rows */
+.dsrc{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 4px}
+.dc{font-size:11px;font-weight:700;padding:3px 8px 3px 7px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted)}
+.dc::before{content:"●";margin-right:4px;font-size:9px;color:var(--void)}
+.dc.ok::before{color:var(--win)} .dc.bad::before{color:var(--loss)}
+.dt{font-size:11px;color:var(--muted);margin-left:auto}
+.pday{margin:16px 2px 6px}
+details.gm{background:var(--surface);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;overflow:hidden}
+details.gm[open]{border-color:rgba(232,182,76,.45)}
+details.gm > summary{list-style:none;cursor:pointer;padding:10px 12px 11px}
+details.gm > summary::-webkit-details-marker{display:none}
+.gm-top{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted)}
+.gm-tags{display:flex;align-items:center;gap:5px}
+.gt{font-size:10px;font-weight:800;padding:2px 6px;border-radius:5px;background:var(--raise);color:var(--muted)}
+.gt.ok{background:rgba(61,220,132,.14);color:var(--win)} .gt.val{background:rgba(232,182,76,.16);color:var(--gold)} .gt.live{background:rgba(255,90,79,.14);color:var(--loss)}
+.gm-chev{font-size:12px;color:var(--muted);transition:transform .15s}
+details.gm[open] .gm-chev{transform:rotate(180deg)}
+.gm-teams{display:flex;justify-content:space-between;gap:10px;font-weight:800;font-size:15px;margin:3px 0 0}
+.gm-teams span:last-child{text-align:right}
+details.gm .pbar{height:24px;margin:7px 0 8px;font-size:12px}
+.gm-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+.gm-kpi div{text-align:center}
+.gm-kpi div:first-child{text-align:left} .gm-kpi div:last-child{text-align:right}
+.gm-kpi small{display:block;font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.gm-kpi b{font-family:var(--display);font-stretch:80%;font-weight:900;font-size:16px;font-variant-numeric:tabular-nums}
+.gm-body{padding:2px 12px 12px;border-top:1px solid var(--line)}
+.mk{padding:10px 0 4px;border-bottom:1px dashed var(--line)}
+.mk:last-child{border-bottom:0}
+.mk-h{font-size:10px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
+.mt{display:grid;grid-template-columns:1fr 54px 54px;row-gap:5px;column-gap:6px;align-items:center;font-size:13px}
+.mt.c5{grid-template-columns:1fr 46px 46px 46px 62px}
+.mh{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:right}
+.mc{text-align:right;font-variant-numeric:tabular-nums;font-weight:700}
+.mc.l{text-align:left;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mc .vt{font-size:10px}
+.mk-n{font-size:11px;color:var(--muted);margin-top:7px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mk .tag{display:inline-block;margin-bottom:4px}
+.mk .tn{margin-top:6px}
+.pnote{font-size:11px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -611,9 +651,12 @@ var FBModel = (function(){
       if(x > y) H += p; else if(x === y) D += p; else A += p;
       top.push([x, y, p]);
     }
-    var s = H + D + A;
+    var s = H + D + A, o15 = 0, o25 = 0, o35 = 0, btts = 0;
+    top.forEach(function(t){ var g = t[0] + t[1]; if(g > 1) o15 += t[2]; if(g > 2) o25 += t[2]; if(g > 3) o35 += t[2]; if(t[0] > 0 && t[1] > 0) btts += t[2]; });
     top.sort(function(a,b){ return b[2] - a[2]; });
-    return {home:H/s, draw:D/s, away:A/s, xgHome:lh, xgAway:la, likely: top[0][0] + "–" + top[0][1]};
+    return {home:H/s, draw:D/s, away:A/s, xgHome:lh, xgAway:la, likely: top[0][0] + "–" + top[0][1],
+      over15:o15/s, over25:o25/s, over35:o35/s, btts:btts/s,
+      scores: top.slice(0,3).map(function(t){ return {s: t[0] + "–" + t[1], p: t[2]/s}; })};
   }
 
   return {fit:fit, predict:predict};
@@ -745,7 +788,9 @@ var FBModel = (function(){
   }
   // ---- Betfair Exchange odds (via The Odds API, filled by the GitHub job) ----
   var COMMISSION = 0.05;
-  function exch(f){ var x = f && FPL && FPLMAP[fkey(f)]; return x && FPL.odds && FPL.odds[x.id] ? FPL.odds[x.id] : null; }
+  function exch(f){ var x = f && FPL && FPLMAP[fkey(f)]; var o = x && FPL.odds && FPL.odds[x.id] ? FPL.odds[x.id] : null;
+    if(o) o.inplay = !!o.live || Date.parse(o.at) >= Date.parse(x.ko);
+    return o; }
   function netDec(d){ return 1 + (d - 1) * (1 - COMMISSION); }
   function edgeOf(p, d){ return p * netDec(d) - 1; }
   function exPrice(o, code){ return o ? o[{H:"h",D:"d",A:"a"}[code]] : null; }
@@ -981,27 +1026,15 @@ var FBModel = (function(){
   function renderPreds(){
     var body = $("predsBody"); body.textContent = "";
     body.appendChild(predSelector());
-    var ds = el("div","dstat");
-    if(FPL_STATE === "ready" && FPL.status && FPL.status.ok){
-      ds.className = "dstat ok";
-      ds.appendChild(el("b",null,"Team news & lineups: connected"));
-      ds.appendChild(el("span",null,"Fantasy Premier League data, checked " + when(Date.parse(FPL.status.checked))));
-    } else if(FPL_STATE === "ready" && FPL.status){
-      ds.className = "dstat bad";
-      ds.appendChild(el("b",null,"Team news & lineups: not working"));
-      ds.appendChild(el("span",null,FPL.status.message));
-    } else {
-      ds.appendChild(el("b",null,"Team news & lineups: not set up yet"));
-      ds.appendChild(el("span",null,"Predictions still work from results."));
-    }
-    body.appendChild(ds);
-    if(FPL && FPL.oddsStatus){
-      var os = FPL.oddsStatus, od = el("div","dstat " + (os.ok ? "ok" : os.message === "Not set up" ? "" : "bad"));
-      var ob = el("b"); ob.appendChild(bfxTag()); ob.appendChild(document.createTextNode(os.ok ? " odds: connected" : os.message === "Not set up" ? " odds: not set up yet" : " odds: not working"));
-      od.appendChild(ob);
-      od.appendChild(el("span",null, os.ok ? "Prices updated " + when(Date.parse(os.pulled)) + ". Value allows for 5% exchange commission." : os.message === "Not set up" ? "Add a free The Odds API key to show exchange prices." : os.message));
-      body.appendChild(od);
-    }
+    var src = el("div","dsrc");
+    function chip(label, state, tip){ var c = el("span","dc " + state, label); if(tip) c.title = tip; src.appendChild(c); }
+    var fok = FPL_STATE === "ready" && FPL.status && FPL.status.ok;
+    chip("Team news", fok ? "ok" : FPL_STATE === "ready" ? "bad" : "off", fok ? "" : FPL && FPL.status ? FPL.status.message : "Not set up");
+    chip("Lineups", fok && (!FPL.lineupStatus || FPL.lineupStatus.ok) ? "ok" : fok ? "bad" : "off");
+    var os = FPL && FPL.oddsStatus;
+    chip("Betfair Exchange", os && os.ok ? "ok" : os && os.message !== "Not set up" ? "bad" : "off", os ? os.message || "" : "Not set up");
+    if(fok) src.appendChild(el("span","dt","Updated " + when(Date.parse(FPL.status.checked))));
+    body.appendChild(src);
     if(MODEL_STATE !== "ready"){
       if(MODEL_STATE === "idle") loadHistory();
       body.appendChild(el("div","idle", MODEL_STATE === "failed" ? "Couldn’t load the data. Tap Refresh on the main page and try again." : "Crunching the numbers…"));
@@ -1014,104 +1047,11 @@ var FBModel = (function(){
     var lastDay = null;
     games.forEach(function(f){
       if(f.date !== lastDay){ lastDay = f.date; body.appendChild(el("div","pday", new Date(f.date + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}))); }
-      var pr = predFor(f), news = teamNews(f);
-      var c = el("div","pm");
-      var t = el("div","pm-teams");
-      t.appendChild(el("span",null,f.home));
-      t.appendChild(el("small",null, f.time ? f.time : "v"));
-      t.appendChild(el("span",null,f.away));
-      c.appendChild(t);
-      var bar = el("div","pbar"), mx = Math.max(pr.home, pr.draw, pr.away);
-      [["ph",pr.home],["pd",pr.draw],["pa",pr.away]].forEach(function(s){
-        var seg = el("span", s[0] + (s[1] === mx ? " fav" : ""), pct(s[1])); seg.style.flex = String(Math.max(0.12, s[1])); bar.appendChild(seg);
-      });
-      bar.setAttribute("aria-label", f.home + " win " + pct(pr.home) + ", draw " + pct(pr.draw) + ", " + f.away + " win " + pct(pr.away));
-      c.appendChild(bar);
-      var ft = el("div","pm-foot");
-      [[f.home + " win", pr.home],["Draw", pr.draw],[f.away + " win", pr.away]].forEach(function(s){ var d = el("div"); d.appendChild(el("b",null,"Fair " + fairOdds(s[1]))); d.appendChild(document.createTextNode(s[0])); ft.appendChild(d); });
-      c.appendChild(ft);
-      var ex = exch(f);
-      if(ex){
-        var exh = el("div","exh"); exh.appendChild(bfxTag()); exh.appendChild(el("span",null,(ex.live ? "in-play " : "") + "back prices · " + when(Date.parse(ex.at)))); c.appendChild(exh);
-        var exg = el("div","exg");
-        [["H",pr.home],["D",pr.draw],["A",pr.away]].forEach(function(s){
-          var d = el("div"), price = exPrice(ex, s[0]);
-          d.appendChild(el("b",null, price ? price.toFixed(2) : "—"));
-          if(price) d.appendChild(valTag(s[1], price));
-          exg.appendChild(d);
-        });
-        c.appendChild(exg);
-      }
-      var meta = el("div","pm-meta");
-      var l = el("span",null,"Most likely score "); l.appendChild(el("b",null,pr.likely)); meta.appendChild(l);
-      var g = el("span",null,"Expected goals "); g.appendChild(el("b",null, pr.xgHome.toFixed(1) + "–" + pr.xgAway.toFixed(1))); meta.appendChild(g);
-      c.appendChild(meta);
-      if(news){
-        var nw = el("div","news");
-        var both = news.sides[0].confirmed && news.sides[1].confirmed;
-        if(news.source === "verified"){
-          nw.appendChild(el("span","tag ok","✓ Confirmed & verified lineups"));
-          nw.appendChild(el("div","vline","Official team sheets via ESPN, checked against Premier League squad lists · " + when(Date.parse(news.auto.at))));
-        } else if(news.source === "espn"){
-          nw.appendChild(el("span","tag warn","Confirmed lineups · not fully verified"));
-          nw.appendChild(el("div","vline","From ESPN, but some names couldn’t be matched to Premier League squads · " + when(Date.parse(news.auto.at))));
-        } else if(news.source === "manual"){
-          nw.appendChild(el("span","tag ok", both ? "Confirmed XIs · entered by organiser" : "One XI confirmed · entered by organiser"));
-        } else {
-          nw.appendChild(el("span","tag","Predicted XIs"));
-          nw.appendChild(el("div","vline","Official lineups appear here automatically about an hour before kick-off."));
-        }
-        news.sides.forEach(function(s, i){
-          var ln = el("div","tn");
-          var top = el("div","tn-top"); top.appendChild(el("b",null, i === 0 ? f.home : f.away));
-          if(s.strength != null){ var st = el("span","str " + (s.strength >= 92 ? "hi" : s.strength >= 80 ? "mid" : "lo"), "XI strength " + s.strength + "%"); top.appendChild(st); }
-          ln.appendChild(top);
-          if(s.out.length){
-            var o = el("div","outs");
-            o.appendChild(el("span","ol", s.confirmed ? "Not starting: " : "Doubts & absences: "));
-            o.appendChild(document.createTextNode(s.out.slice(0,4).map(function(p){
-              if(s.confirmed) return p.name;
-              return p.name + (p.status === "d" && p.chance != null ? " (" + p.chance + "%)" : p.status === "s" ? " (suspended)" : " (out)");
-            }).join(", ")));
-            ln.appendChild(o);
-          }
-          nw.appendChild(ln);
-        });
-        var det = el("details","xis"), sm = el("summary",null, both ? "Show confirmed lineups" : "Show predicted lineups");
-        if(news.auto) det.open = true;
-        det.appendChild(sm);
-        var cols = el("div","xicols");
-        news.sides.forEach(function(s, i){
-          var col = el("div","xicol"); col.appendChild(el("b",null,(i === 0 ? f.home : f.away) + (s.confirmed ? " ✓" : "")));
-          if(s.formation) col.appendChild(el("small","fm", s.formation));
-          var ul = el("ol");
-          if(s.names){ s.names.forEach(function(n){ var li = el("li",null,n); if(s.unmatched.indexOf(n) >= 0){ li.className = "um"; li.title = "Not in the Premier League squad list yet"; } ul.appendChild(li); }); }
-          else { var ids = s.ids.slice().sort(function(a,b){ return (FPL.players[a]||[])[2] - (FPL.players[b]||[])[2]; }); ids.forEach(function(id){ ul.appendChild(el("li",null,playerName(id))); }); }
-          col.appendChild(ul);
-          cols.appendChild(col);
-        });
-        det.appendChild(cols);
-        nw.appendChild(det);
-        if(canWrite && !news.auto){
-          var eb = el("button","xibtn", both ? "Edit confirmed XIs" : "Enter confirmed XIs manually"); eb.type = "button";
-          (function(fx, ff){ eb.addEventListener("click", function(){ openLineups(fx, ff); }); })(news.fx, f);
-          nw.appendChild(eb);
-        }
-        c.appendChild(nw);
-      }
-      body.appendChild(c);
+      body.appendChild(gameRow(f));
     });
     }
     var n = el("p","pnote");
-    n.appendChild(el("b",null,"How it works. "));
-    n.appendChild(document.createTextNode("Rates every team’s attack and defence from the last two seasons plus this one (Premier League and Championship, recent games count more), adds home advantage, and works out the chance of every scoreline. "));
-    n.appendChild(el("b",null,"Fair odds"));
-    n.appendChild(document.createTextNode(" are what the chances are worth with no bookmaker margin. If a bookie offers bigger odds than the fair price, the model thinks it’s value. "));
-    n.appendChild(el("b",null,"Track record: "));
-    n.appendChild(document.createTextNode("tested on 430 past Premier League games, it called the right result 48% of the time against 42% for league averages, and its percentages broadly matched how often things happened (it slightly under-rates draws). "));
-    n.appendChild(el("b",null,"Lineups and team news. "));
-    n.appendChild(document.createTextNode("Confirmed lineups are pulled in automatically from ESPN’s official team sheets as soon as clubs announce them (usually an hour before kick-off). Each player is checked against the Premier League’s registered squad lists; lineups are marked verified when every starter matches (one new signing not yet listed is allowed). Before that, predicted XIs come from who has started the last 8 games, minus injured and suspended players. "))
-    n.appendChild(document.createTextNode("XI strength compares the lineup to the team’s usual first choices. We tested whether weakened lineups should move the percentages: across 850 team selections over the last two seasons they didn’t perform measurably worse than the model expected, so the percentages above are left unchanged. Use the team news as your own judgement call, especially when a star player is missing."));
+    n.appendChild(document.createTextNode("Model tested on 430 Premier League games: right result 48% (league average 42%); goals markets within 2 points of actual. Fair = price with no margin. Value = model edge vs Betfair Exchange after 5% commission. Lineups don’t change the %: tested, no measurable effect."));
     body.appendChild(n);
   }
   // ---- Gameweek selector and suggested bets ----
@@ -1166,7 +1106,7 @@ var FBModel = (function(){
     r.appendChild(l);
     var rr = el("div","sg-r"); rr.appendChild(el("b",null,pct(k.p))); rr.appendChild(el("small",null,"fair " + fairOdds(k.p)));
     var price = exPrice(exch(k.f), k.code);
-    if(price){ var xl = el("small","sgx"); xl.appendChild(document.createTextNode("Exchange " + price.toFixed(2) + " ")); xl.appendChild(valTag(k.p, price)); rr.appendChild(xl); }
+    if(price){ var xl = el("small","sgx"); xl.appendChild(document.createTextNode("Exchange " + price.toFixed(2) + " ")); if(!exch(k.f).inplay) xl.appendChild(valTag(k.p, price)); rr.appendChild(xl); }
     r.appendChild(rr);
     return r;
   }
@@ -1177,7 +1117,7 @@ var FBModel = (function(){
       card.appendChild(el("div","sg-h","Suggested treble"));
       if(picks.length < 3){ card.appendChild(el("p","sg-note","Not enough games in this gameweek for a treble yet.")); body.appendChild(card); return; }
       var legs = picks.slice(0,3), p = legs.reduce(function(a,k){ return a * k.p; }, 1);
-      card.appendChild(el("p","sg-sub","The model’s three most likely results this gameweek."));
+      card.appendChild(el("p","sg-sub","Three most likely results this gameweek."));
       legs.forEach(function(k){ card.appendChild(pickRow(k)); });
       var tot = el("div","sg-tot");
       var a = el("div"); a.appendChild(el("small",null,"Chance all three land")); a.appendChild(el("b",null,pct(p))); tot.appendChild(a);
@@ -1187,13 +1127,13 @@ var FBModel = (function(){
       if(prices.every(Boolean)){
         var tx = prices.reduce(function(a,b){ return a*b; }, 1), eq = el("div","sg-ex");
         var top = el("div"); top.appendChild(bfxTag()); top.appendChild(el("b",null,"equivalent " + tx.toFixed(2))); eq.appendChild(top);
-        eq.appendChild(el("small",null,"Calculated by multiplying the three match prices. The exchange doesn’t offer trebles, so this is a guide to what the market thinks each leg is worth, not a bet you can place there."));
+        eq.appendChild(el("small",null,"Three exchange prices multiplied. A guide only: the exchange doesn’t offer trebles."));
         card.appendChild(eq);
       }
-      card.appendChild(el("p","sg-value","Worth backing if the bookie pays more than " + fairOdds(p) + " for the treble. Type their odds in when you add it and the app will tell you if it’s value."));
+      card.appendChild(el("p","sg-value","Value if the bookie pays more than " + fairOdds(p) + "."));
       if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
     }
-    card.appendChild(el("p","sg-note","These are the model’s most likely outcomes, not guaranteed value. It calls single results right about 48% of the time, so even a strong-looking treble usually loses."));
+    card.appendChild(el("p","sg-note","Most likely, not guaranteed: the model calls single results right 48% of the time."));
     body.appendChild(card);
   }
   var SINGLE_P = null;
@@ -1218,6 +1158,93 @@ var FBModel = (function(){
     d.appendChild(document.createTextNode("Model chance " + pct(p) + " (fair " + fairOdds(p) + ") · "));
     d.appendChild(el("b",null, edge > 0 ? "Value: +" + Math.round(edge*100) + "%" : "No value: " + Math.round(edge*100) + "%"));
     return d;
+  }
+
+  // ---- Prediction rows ----
+  function gameRow(f){
+    var pr = predFor(f), news = teamNews(f), ex = exch(f);
+    var d = el("details","gm"), sm = el("summary");
+    // collapsed: time, teams, result %, key goals stats
+    var top = el("div","gm-top"); top.appendChild(el("span","gm-t", f.time || "TBC"));
+    var tags = el("span","gm-tags");
+    if(news && news.auto) tags.appendChild(el("span","gt ok", news.auto.verified ? "XIs ✓" : "XIs"));
+    if(ex && ex.inplay) tags.appendChild(el("span","gt live","In play"));
+    else if(ex && [["H",pr.home],["D",pr.draw],["A",pr.away]].some(function(s){ var x = exPrice(ex, s[0]); return x && edgeOf(s[1], x) > 0; })) tags.appendChild(el("span","gt val","Value"));
+    tags.appendChild(el("span","gm-chev","▾"));
+    top.appendChild(tags); sm.appendChild(top);
+    var tm = el("div","gm-teams"); tm.appendChild(el("span",null,f.home)); tm.appendChild(el("span",null,f.away)); sm.appendChild(tm);
+    var bar = el("div","pbar"), mx = Math.max(pr.home, pr.draw, pr.away);
+    [["ph",pr.home,"H"],["pd",pr.draw,"D"],["pa",pr.away,"A"]].forEach(function(s){ var seg = el("span", s[0] + (s[1] === mx ? " fav" : ""), pct(s[1])); seg.style.flex = String(Math.max(0.14, s[1])); bar.appendChild(seg); });
+    bar.setAttribute("aria-label", f.home + " " + pct(pr.home) + ", draw " + pct(pr.draw) + ", " + f.away + " " + pct(pr.away));
+    sm.appendChild(bar);
+    var k = el("div","gm-kpi");
+    [["Likely score", pr.likely],["Exp. goals", (pr.xgHome + pr.xgAway).toFixed(1)],["Over 2.5", pct(pr.over25)],["BTTS", pct(pr.btts)]].forEach(function(x){ var c = el("div"); c.appendChild(el("small",null,x[0])); c.appendChild(el("b",null,x[1])); k.appendChild(c); });
+    sm.appendChild(k);
+    d.appendChild(sm);
+    // expanded detail, built when first opened
+    var built = false;
+    d.addEventListener("toggle", function(){ if(d.open && !built){ built = true; d.appendChild(gameDetail(f, pr, news, ex)); } });
+    return d;
+  }
+  function mkt(title){ var s = el("div","mk"); s.appendChild(el("div","mk-h",title)); return s; }
+  function mktTable(sec, head, rows){
+    var t = el("div","mt" + (head.length === 5 ? " c5" : ""));
+    head.forEach(function(hd){ t.appendChild(el("span","mh",hd)); });
+    rows.forEach(function(r){ r.forEach(function(c, i){ if(c && c.nodeType){ var w = el("span","mc"); w.appendChild(c); t.appendChild(w); } else t.appendChild(el("span", i === 0 ? "mc l" : "mc", c == null ? "—" : String(c))); }); });
+    sec.appendChild(t);
+  }
+  function gameDetail(f, pr, news, ex){
+    var box = el("div","gm-body");
+    // Result
+    var r = mkt("Result"), hasEx = !!ex;
+    var head = hasEx ? ["", "Model", "Fair", "Exch", "Value"] : ["", "Model", "Fair"];
+    mktTable(r, head, [[f.home, pr.home, "H"],["Draw", pr.draw, "D"],[f.away, pr.away, "A"]].map(function(s){
+      var row = [s[0], pct(s[1]), fairOdds(s[1])];
+      if(hasEx){ var x = exPrice(ex, s[2]); row.push(x ? x.toFixed(2) : "—"); row.push(x && !ex.inplay ? valTag(s[1], x) : "—"); }
+      return row;
+    }));
+    if(hasEx){ var exn = el("div","mk-n"); exn.appendChild(bfxTag()); exn.appendChild(document.createTextNode((ex.inplay ? " in-play prices, no value check" : " back prices") + " · " + when(Date.parse(ex.at)))); r.appendChild(exn); }
+    box.appendChild(r);
+    // Goals
+    var g = mkt("Goals");
+    mktTable(g, ["", "Model", "Fair"], [["Over 1.5", pr.over15],["Over 2.5", pr.over25],["Under 2.5", 1 - pr.over25],["Over 3.5", pr.over35],["Both teams score", pr.btts]].map(function(s){ return [s[0], pct(s[1]), fairOdds(s[1])]; }));
+    g.appendChild(el("div","mk-n","Expected goals: " + f.home + " " + pr.xgHome.toFixed(2) + " · " + f.away + " " + pr.xgAway.toFixed(2)));
+    box.appendChild(g);
+    // Correct score
+    var c = mkt("Correct score");
+    mktTable(c, ["", "Model", "Fair"], pr.scores.map(function(s){ return [s.s, pct(s.p), fairOdds(s.p)]; }));
+    box.appendChild(c);
+    // Team news
+    if(news) box.appendChild(newsBlock(f, news));
+    return box;
+  }
+  function newsBlock(f, news){
+    var nw = mkt("Team news");
+    var both = news.sides[0].confirmed && news.sides[1].confirmed;
+    var st = news.source === "verified" ? ["ok","Confirmed & verified XIs"] : news.source === "espn" ? ["warn","Confirmed XIs · not fully verified"] : news.source === "manual" ? ["ok","XIs entered by organiser"] : ["","Predicted XIs"];
+    var tg = el("span","tag " + st[0], st[1]); nw.appendChild(tg);
+    if(news.auto) nw.appendChild(el("div","vline","ESPN team sheets, checked vs Premier League squads · " + when(Date.parse(news.auto.at))));
+    news.sides.forEach(function(s, i){
+      var ln = el("div","tn"), top = el("div","tn-top"); top.appendChild(el("b",null, i === 0 ? f.home : f.away));
+      if(s.strength != null) top.appendChild(el("span","str " + (s.strength >= 92 ? "hi" : s.strength >= 80 ? "mid" : "lo"), "XI " + s.strength + "%"));
+      ln.appendChild(top);
+      if(s.out.length){ var o = el("div","outs"); o.appendChild(el("span","ol", s.confirmed ? "Not starting: " : "Out/doubt: "));
+        o.appendChild(document.createTextNode(s.out.slice(0,4).map(function(p){ return s.confirmed ? p.name : p.name + (p.status === "d" && p.chance != null ? " " + p.chance + "%" : p.status === "s" ? " (susp)" : ""); }).join(", "))); ln.appendChild(o); }
+      nw.appendChild(ln);
+    });
+    var det = el("details","xis"); det.appendChild(el("summary",null, both ? "Lineups" : "Predicted lineups"));
+    var cols = el("div","xicols");
+    news.sides.forEach(function(s, i){
+      var col = el("div","xicol"); col.appendChild(el("b",null,(i === 0 ? f.home : f.away) + (s.confirmed ? " ✓" : "")));
+      if(s.formation) col.appendChild(el("small","fm", s.formation));
+      var ul = el("ol");
+      if(s.names) s.names.forEach(function(n){ var li = el("li",null,n); if(s.unmatched.indexOf(n) >= 0) li.className = "um"; ul.appendChild(li); });
+      else s.ids.slice().sort(function(a,b){ return (FPL.players[a]||[])[2] - (FPL.players[b]||[])[2]; }).forEach(function(id){ ul.appendChild(el("li",null,playerName(id))); });
+      col.appendChild(ul); cols.appendChild(col);
+    });
+    det.appendChild(cols); nw.appendChild(det);
+    if(canWrite && !news.auto){ var eb = el("button","xibtn", both ? "Edit XIs" : "Enter confirmed XIs"); eb.type = "button"; eb.addEventListener("click", function(){ openLineups(news.fx, f); }); nw.appendChild(eb); }
+    return nw;
   }
 
   function closePreds(){
