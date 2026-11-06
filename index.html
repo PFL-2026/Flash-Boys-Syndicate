@@ -332,7 +332,7 @@ body.locked{overflow:hidden}
 .psel select{appearance:none;-webkit-appearance:none;width:100%;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 36px 12px 14px;font-size:16px;font-weight:800;color:var(--gold);
   background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px;background-repeat:no-repeat}
 .pgw{font-weight:800;color:var(--gold);padding:4px 2px}
-.pseg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.pseg{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
 .pseg button{border:0;background:transparent;border-radius:9px;padding:10px 4px;font-size:13px;font-weight:800;color:var(--muted)}
 .pseg button[aria-pressed="true"]{background:linear-gradient(180deg,var(--gold-hi),var(--gold));color:#0A0A0B}
 .sg{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px;margin-top:12px;position:relative;overflow:hidden}
@@ -452,6 +452,19 @@ html{scroll-padding-top:calc(70px + env(safe-area-inset-top,0px))}
 .lc-odds{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .lc-odds input{width:110px!important;text-align:right;font-weight:800}
 .leg-card .leg-custom{grid-column:auto!important}
+
+.mk .tag{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:var(--raise);color:var(--gold);margin-bottom:4px}
+.mk .tag.ok{background:rgba(61,220,132,.14);color:var(--win)} .mk .tag.warn{background:rgba(232,182,76,.14);color:var(--gold)}
+.mk .vline{font-size:11px;color:var(--muted);margin:0 0 4px}
+.mt .mh:first-child{text-align:left}
+.mt .mc,.mt .mh{white-space:nowrap}
+
+.sg-h2.first{margin-top:0;padding-top:0;border-top:0}
+.trk{margin-top:10px}
+.trk-r{display:grid;grid-template-columns:44px 1fr auto;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line);font-size:13px}
+.trk-gw{color:var(--muted);font-weight:700;font-size:12px}
+.trk-l{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trk-r b.pos{color:var(--win)} .trk-r b.neg{color:var(--loss)}
 </style>
 </head>
 <body>
@@ -708,6 +721,10 @@ var FBModel = (function(){
     if(adj){ ah += adj.home || 0; dh -= adj.home || 0; aa += adj.away || 0; da -= adj.away || 0; }
     var lh = Math.exp(m.base + m.home + ah + da);
     var la = Math.exp(m.base - m.home + aa + dh);
+    return fromRates(lh, la, m.rho);
+  }
+  function fromRates(lh, la, rho){
+    var m = {rho: rho};
     var H = 0, D = 0, A = 0, top = [], MAX = 10;
     for(var x = 0; x <= MAX; x++) for(var y = 0; y <= MAX; y++){
       var p = pois(x, lh) * pois(y, la) * tau(x, y, lh, la, m.rho);
@@ -722,7 +739,15 @@ var FBModel = (function(){
       scores: top.slice(0,3).map(function(t){ return {s: t[0] + "–" + t[1], p: t[2]/s}; })};
   }
 
-  return {fit:fit, predict:predict};
+  // Keep the model's expected total goals, but set the goal difference so that
+  // win/draw/win matches the market; goals and correct-score markets follow from that.
+  function toMarket(m, pr, target){
+    var T = pr.xgHome + pr.xgAway, lo = -T * 0.98, hi = T * 0.98, goal = target.home - target.away, r = pr;
+    for(var i = 0; i < 40; i++){ var s = (lo + hi) / 2; r = fromRates((T + s) / 2, (T - s) / 2, m.rho); if(r.home - r.away < goal) lo = s; else hi = s; }
+    r.home = target.home; r.draw = target.draw; r.away = target.away;
+    return r;
+  }
+  return {fit:fit, predict:predict, toMarket:toMarket};
 })();
 
   // ---- Model data ----
@@ -877,7 +902,13 @@ var FBModel = (function(){
   }
   function predFor(f){
     if(!MODEL || !f || f.lg !== "en.1") return null;
-    return FBModel.predict(MODEL, f.home, f.away);
+    var pr = FBModel.predict(MODEL, f.home, f.away), bk = b365(f);
+    if(bk && !bk.inplay && bk.h && bk.d && bk.a){
+      var ih = 1/bk.h, id = 1/bk.d, ia = 1/bk.a, s = ih + id + ia;
+      pr = FBModel.toMarket(MODEL, pr, {home: ih/s, draw: id/s, away: ia/s});
+      pr.src = "b365";
+    } else pr.src = "model";
+    return pr;
   }
 
   function fairOdds(p){ return p > 0 ? (1/p).toFixed(2) : "—"; }
@@ -1122,8 +1153,7 @@ var FBModel = (function(){
     }
     var games = predGames();
     if(!games.length){ body.appendChild(el("div","idle","No Premier League games to show for this gameweek.")); }
-    if(PRED_VIEW === "rec") renderRecommended(body, games);
-    else if(PRED_VIEW === "treble") renderSuggest(body, games);
+    if(PRED_VIEW === "rec" || PRED_VIEW === "treble") renderRecommended(body, games);
     else {
     var lastDay = null;
     games.forEach(function(f){
@@ -1133,7 +1163,7 @@ var FBModel = (function(){
     });
     }
     var n = el("p","pnote");
-    n.appendChild(document.createTextNode("Model tested on 430 Premier League games: right result 48% (league average 42%); goals markets within 2 points of actual. Fair = price with no margin. Value = model chance vs the Bet365 price. Lineups don’t change the %: tested, no measurable effect."));
+    n.appendChild(document.createTextNode("Chances use Bet365’s prices with the margin removed: tested on 1,350 past Premier League games, the market called 56% of results right against 53% for the model alone, and blending the two never helped. Where there’s no Bet365 price yet, the model fills in. Goals and score chances keep the model’s goal expectation, matched to the market’s result odds. Fair = price with no margin."));
     body.appendChild(n);
   }
   // ---- Gameweek selector and suggested bets ----
@@ -1168,7 +1198,7 @@ var FBModel = (function(){
       box.appendChild(sel);
     } else box.appendChild(el("div","pgw","Next 10 days"));
     var seg = el("div","pseg");
-    [["games","All games"],["rec","Recommended"],["treble","Value treble"]].forEach(function(v){
+    [["games","All games"],["rec","Recommended treble"]].forEach(function(v){
       var b = el("button",null,v[1]); b.type = "button"; b.setAttribute("aria-pressed", PRED_VIEW === v[0] ? "true" : "false");
       b.addEventListener("click", function(){ PRED_VIEW = v[0]; renderPreds(); });
       seg.appendChild(b);
@@ -1188,7 +1218,7 @@ var FBModel = (function(){
     r.appendChild(l);
     var rr = el("div","sg-r"); rr.appendChild(el("b",null,pct(k.p))); rr.appendChild(el("small",null,"fair " + fairOdds(k.p)));
     var pp = primary(k.f), price = pp && exPrice(pp.o, k.code);
-    if(price){ var xl = el("small","sgx"); xl.appendChild(document.createTextNode((pp.src === "b365" ? "Bet365 " : "Exchange ") + price.toFixed(2) + " ")); xl.appendChild(valTagSrc(k.p, price, pp.src)); rr.appendChild(xl); }
+    if(price) rr.appendChild(el("small","sgx","Bet365 " + price.toFixed(2)));
     r.appendChild(rr);
     return r;
   }
@@ -1242,21 +1272,64 @@ var FBModel = (function(){
     card.appendChild(tot);
     return p;
   }
+  // Recommended treble: the gameweek's three strongest favourites at Bet365 (pre-match, not started).
+  // Back-tested on 121 past Premier League gameweeks at Bet365 prices: landed 39%, roughly broke even.
+  function favLegs(games){
+    var out = [];
+    games.forEach(function(f){
+      var pr = predFor(f), pp = primary(f); if(!pr || !pp || pr.src !== "b365") return;
+      var o = [["H",pr.home],["A",pr.away]].sort(function(a,b){ return b[1] - a[1]; })[0];
+      var d = exPrice(pp.o, o[0]); if(!d) return;
+      out.push({f:f, code:o[0], p:o[1], label:outcomeLabel(f, o[0]), d:d, src:"b365"});
+    });
+    return out.sort(function(a,b){ return b.p - a.p; });
+  }
   function renderRecommended(body, games){
     var card = el("div","sg");
     card.appendChild(el("div","sg-h","Recommended treble"));
-    if(!games.some(function(f){ return !!primary(f); })){ card.appendChild(el("p","sg-sub","Needs Bet365 prices. Check back nearer kick-off.")); body.appendChild(card); return; }
-    var best = bestRec(games, 0), relaxed = false;
-    if(!best){ best = bestRec(games, -0.05); relaxed = true; }
-    if(!best){ card.appendChild(el("p","sg-sub","No treble this gameweek with a decent chance at a fair Bet365 price. Try the Value treble, or check back as prices move.")); body.appendChild(card); return; }
-    var legs = best.legs.slice().sort(function(a,b){ return koSort(a.f).localeCompare(koSort(b.f)); });
-    card.appendChild(el("p","sg-sub", relaxed ? "Highest-chance treble at close to a fair Bet365 price (within 5%)." : "Highest-chance treble that is still value overall at Bet365."));
+    var legs = favLegs(games);
+    if(legs.length < 3){ card.appendChild(el("p","sg-sub", legs.length ? "Waiting for Bet365 prices on more games this gameweek. Check back nearer kick-off." : "Needs Bet365 prices. Check back nearer kick-off.")); body.appendChild(card); renderTrack(body); return; }
+    legs = legs.slice(0,3).sort(function(a,b){ return koSort(a.f).localeCompare(koSort(b.f)); });
+    card.appendChild(el("p","sg-sub","The three strongest favourites this gameweek at Bet365."));
     legs.forEach(function(k){ card.appendChild(pickRow(k)); });
-    var p = trebleTotals(card, legs);
-    card.appendChild(el("p","sg-value","Fair treble price " + fairOdds(p) + ". Back it at " + fairOdds(p) + " or bigger."));
+    var p = legs.reduce(function(a,k){ return a * k.p; }, 1), tx = legs.reduce(function(a,k){ return a * k.d; }, 1);
+    var tot = el("div","sg-tot three");
+    [["Chance",pct(p)],["Bet365 treble",tx.toFixed(2)],["£10 returns","£" + (10*tx).toFixed(2)]].forEach(function(x){ var c = el("div"); c.appendChild(el("small",null,x[0])); c.appendChild(el("b",null,x[1])); tot.appendChild(c); });
+    card.appendChild(tot);
     if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
-    card.appendChild(el("p","sg-note","Tests every combination: legs 30%+ likely, none over 30% from the market, treble priced at fair or better. Better chance than the Value treble, smaller payout."));
+    card.appendChild(el("p","sg-note","Tested on 121 past Premier League gameweeks at Bet365 prices: landed 39% of the time and roughly broke even. The best of the strategies tested, not a guaranteed profit."));
     body.appendChild(card);
+    renderTrack(body);
+  }
+  // Track record from saved pre-kick-off Bet365 prices (logged by the GitHub job from 7 Nov 2026)
+  function renderTrack(body){
+    var box = el("div","sg trk"); box.appendChild(el("div","sg-h2 first","Track record"));
+    var cl = FPL && FPL.closing, rows = [];
+    if(cl){
+      var byGw = {};
+      FPL.fixtures.forEach(function(x){ if(x.gw && cl[x.id]) (byGw[x.gw] = byGw[x.gw] || []).push(x); });
+      Object.keys(byGw).map(Number).sort(function(a,b){ return b - a; }).forEach(function(gw){
+        var xs = byGw[gw], all = FPL.fixtures.filter(function(x){ return x.gw === gw; });
+        if(!all.every(function(x){ return x.done && x.hs != null; }) || xs.length < 3) return;
+        var legs = xs.map(function(x){ var o = cl[x.id]; return o.h <= o.a ? {x:x, c:"H", d:o.h} : {x:x, c:"A", d:o.a}; })
+          .sort(function(a,b){ return a.d - b.d; }).slice(0,3);
+        var won = legs.every(function(l){ return l.c === "H" ? l.x.hs > l.x.as : l.x.as > l.x.hs; });
+        var tx = legs.reduce(function(a,l){ return a * l.d; }, 1);
+        rows.push({gw:gw, won:won, ret: won ? 10*tx - 10 : -10, legs:legs});
+      });
+    }
+    if(!rows.length){ box.appendChild(el("p","sg-sub","Tracking started 7 Nov. Each gameweek’s recommended treble is recorded at Bet365’s last pre-kick-off prices and scored here once its games are finished.")); body.appendChild(box); return; }
+    var n = rows.length, landed = rows.filter(function(r){ return r.won; }).length, pl = rows.reduce(function(a,r){ return a + r.ret; }, 0);
+    var tot = el("div","sg-tot three");
+    [["Gameweeks",String(n)],["Landed",landed + " (" + Math.round(landed/n*100) + "%)"],["Profit at £10",(pl >= 0 ? "+£" : "−£") + Math.abs(pl).toFixed(2)]].forEach(function(x, i){ var c = el("div"); c.appendChild(el("small",null,x[0])); c.appendChild(el("b", i === 2 ? (pl >= 0 ? "pos" : "neg") : null, x[1])); tot.appendChild(c); });
+    box.appendChild(tot);
+    rows.slice(0,6).forEach(function(r){
+      var line = el("div","trk-r"); line.appendChild(el("span","trk-gw","GW" + r.gw));
+      line.appendChild(el("span","trk-l", r.legs.map(function(l){ var t = FPL.teams[l.c === "H" ? l.x.h : l.x.a]; return t ? t.short : "?"; }).join(" · ")));
+      line.appendChild(el("b", r.won ? "pos" : "neg", r.won ? "+£" + r.ret.toFixed(2) : "−£10"));
+      box.appendChild(line);
+    });
+    body.appendChild(box);
   }
   function appendBig(card, games){
     var big = valueLegs(games, true);
@@ -1325,7 +1398,7 @@ var FBModel = (function(){
     var tags = el("span","gm-tags");
     if(news && news.auto) tags.appendChild(el("span","gt ok", news.auto.verified ? "XIs ✓" : "XIs"));
     if(ex && ex.inplay) tags.appendChild(el("span","gt live","In play"));
-    else { var pp = primary(f); if(pp && [["H",pr.home],["D",pr.draw],["A",pr.away]].some(function(s){ var x = exPrice(pp.o, s[0]); return x && edgeSrc(s[1], x, pp.src) > 0; })) tags.appendChild(el("span","gt val","Value")); }
+    else { if(pr.src === "model") tags.appendChild(el("span","gt","Model only")); }
     tags.appendChild(el("span","gm-chev","▾"));
     top.appendChild(tags); sm.appendChild(top);
     var tm = el("div","gm-teams"); tm.appendChild(el("span",null,f.home)); tm.appendChild(el("span",null,f.away)); sm.appendChild(tm);
@@ -1344,7 +1417,8 @@ var FBModel = (function(){
   }
   function mkt(title){ var s = el("div","mk"); s.appendChild(el("div","mk-h",title)); return s; }
   function mktTable(sec, head, rows){
-    var t = el("div","mt" + (head.length >= 5 ? " c" + head.length : ""));
+    var t = el("div","mt");
+    t.style.gridTemplateColumns = "minmax(0,1fr) " + head.slice(1).map(function(hd){ return hd === "Value" ? "58px" : hd === "Bet365" ? "52px" : "46px"; }).join(" ");
     head.forEach(function(hd){ t.appendChild(el("span","mh",hd)); });
     rows.forEach(function(r){ r.forEach(function(c, i){ if(c && c.nodeType){ var w = el("span","mc"); w.appendChild(c); t.appendChild(w); } else t.appendChild(el("span", i === 0 ? "mc l" : "mc", c == null ? "—" : String(c))); }); });
     sec.appendChild(t);
@@ -1353,25 +1427,24 @@ var FBModel = (function(){
     var box = el("div","gm-body");
     // Result
     var r = mkt("Result"), bk = b365(f), hasEx = false, hasB = !!bk, pp = primary(f);
-    var head = ["", "Model", "Fair"]; if(hasB) head.push("365"); if(hasEx) head.push("Exch"); if(pp) head.push("Value");
+    var head = ["", "Chance", "Fair"]; if(hasB) head.push("Bet365");
     mktTable(r, head, [[f.home, pr.home, "H"],["Draw", pr.draw, "D"],[f.away, pr.away, "A"]].map(function(s){
       var row = [s[0], pct(s[1]), fairOdds(s[1])];
       if(hasB){ var b = exPrice(bk, s[2]); row.push(b ? b.toFixed(2) : "—"); }
-      if(hasEx){ var x = exPrice(ex, s[2]); row.push(x ? x.toFixed(2) : "—"); }
-      if(pp){ var v = exPrice(pp.o, s[2]); row.push(v ? valTagSrc(s[1], v, pp.src, true) : "—"); }
       return row;
     }));
-    if(hasB){ var bn = el("div","mk-n"); bn.appendChild(b365Tag()); bn.appendChild(document.createTextNode((bk.inplay ? " in-play, no value check" : " · value is worked out on these") + " · " + when(Date.parse(bk.at)))); r.appendChild(bn); }
+    if(hasB){ var bn = el("div","mk-n"); bn.appendChild(b365Tag()); bn.appendChild(document.createTextNode((pr.src === "b365" ? " · chances use these prices, margin removed" : " · kicked off") + " · " + when(Date.parse(bk.at)))); r.appendChild(bn); }
+    else r.appendChild(el("div","mk-n","No Bet365 price yet: chances are the model’s own estimate."));
     if(hasEx){ var exn = el("div","mk-n"); exn.appendChild(bfxTag()); exn.appendChild(document.createTextNode((ex.inplay ? " in-play prices" : hasB ? " reference price" : " back prices, value after 5% commission") + " · " + when(Date.parse(ex.at)))); r.appendChild(exn); }
     box.appendChild(r);
     // Goals
     var g = mkt("Goals");
-    mktTable(g, ["", "Model", "Fair"], [["Over 1.5", pr.over15],["Over 2.5", pr.over25],["Under 2.5", 1 - pr.over25],["Over 3.5", pr.over35],["Both teams score", pr.btts]].map(function(s){ return [s[0], pct(s[1]), fairOdds(s[1])]; }));
+    mktTable(g, ["", "Chance", "Fair"], [["Over 1.5", pr.over15],["Over 2.5", pr.over25],["Under 2.5", 1 - pr.over25],["Over 3.5", pr.over35],["Both teams score", pr.btts]].map(function(s){ return [s[0], pct(s[1]), fairOdds(s[1])]; }));
     g.appendChild(el("div","mk-n","Expected goals: " + f.home + " " + pr.xgHome.toFixed(2) + " · " + f.away + " " + pr.xgAway.toFixed(2)));
     box.appendChild(g);
     // Correct score
     var c = mkt("Correct score");
-    mktTable(c, ["", "Model", "Fair"], pr.scores.map(function(s){ return [s.s, pct(s.p), fairOdds(s.p)]; }));
+    mktTable(c, ["", "Chance", "Fair"], pr.scores.map(function(s){ return [s.s, pct(s.p), fairOdds(s.p)]; }));
     box.appendChild(c);
     // Team news
     if(news) box.appendChild(newsBlock(f, news));
@@ -1660,7 +1733,7 @@ var FBModel = (function(){
       var spv = $("preview"); spv.textContent = "";
       if($("sOdds").value && !sd){ spv.textContent = "Odds not recognised. Use decimal odds, e.g. 2.50."; return; }
       if(sd && sst > 0){ spv.appendChild(document.createTextNode(sd.toFixed(2) + " · returns ")); spv.appendChild(el("b",null,gbp(sst*sd)));
-        if(SINGLE_P && SINGLE_P.pick === $("sPick").value) spv.appendChild(valueLine(SINGLE_P.p, sd)); }
+        if(SINGLE_P && SINGLE_P.pick === $("sPick").value) spv.appendChild(el("div","vchk","Chance: " + pct(SINGLE_P.p))); }
       else spv.textContent = "Add stake and odds to see the payout.";
       return;
     }
@@ -1674,7 +1747,7 @@ var FBModel = (function(){
       pv.appendChild(document.createTextNode(frac(dec) + " · returns "));
       pv.appendChild(el("b",null,gbp(stake*dec)));
       var mp = legs.map(function(l){ if(!l.fixture || !l.outcome) return null; var pr = predFor(Object.assign({lg:l.fixture.lg}, l.fixture)); return pr ? pr[{H:"home",D:"draw",A:"away"}[l.outcome]] : null; });
-      if(mp.every(function(x){ return x != null; })) pv.appendChild(valueLine(mp.reduce(function(a,b){ return a*b; },1), dec));
+      if(mp.every(function(x){ return x != null; })) pv.appendChild(el("div","vchk","Chance all three land: " + pct(mp.reduce(function(a,b){ return a*b; },1))));
     } else {
       pv.textContent = "Add stake and odds to see the payout.";
     }
