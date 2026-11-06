@@ -20,11 +20,11 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 22
-      - name: Fetch team news, lineups, xG and exchange odds
+      - name: Fetch team news, lineups, results and Bet365 odds
         run: node scripts/fetch-football.mjs
         env:
-          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
           ODDSRELAY_KEY: ${{ secrets.ODDSRELAY_KEY }}
+          MANUAL_RUN: ${{ github.event_name == 'workflow_dispatch' && '1' || '' }}
       - name: Save to repo
         run: |
           git config user.name "flash-boys-bot"
