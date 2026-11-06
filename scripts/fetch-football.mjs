@@ -12,6 +12,7 @@ const ODDS = process.env.ODDS_BASE || "https://api.the-odds-api.com/v4/sports/so
 const ODDS_KEY = process.env.ODDS_API_KEY;
 const OR_BASE = process.env.ODDSRELAY_BASE || "https://api.oddsrelay.io";
 const OR_KEY = process.env.ODDSRELAY_KEY;
+const MANUAL = process.env.MANUAL_RUN === "1"; // "Run workflow" button: always fetch Bet365
 const OUT = "data/fpl.json";
 const now = new Date();
 
@@ -108,8 +109,8 @@ async function main() {
   try { await bet365Odds(); }
   catch (e) { console.error("Bet365 odds error:", e.message); state.b365Status = Object.assign({}, state.b365Status, { ok: false, message: e.message, pulled: now.toISOString() }); }
 
-  // 7. Betfair Exchange match odds via The Odds API (only if a key is set up)
-  try { await exchangeOdds(); }
+  // 7. Betfair Exchange odds: switched off (Bet365 only). Remove "false &&" to bring it back.
+  try { if (false && ODDS_KEY) await exchangeOdds(); }
   catch (e) { console.error("Odds error:", e.message); state.oddsStatus = Object.assign({}, state.oddsStatus, { ok: false, message: e.message, pulled: now.toISOString() }); }
 }
 
@@ -140,11 +141,12 @@ async function espnResults() {
 // Each call is priced first with a free quote, unchanged boards come back free (ETag),
 // and calls are spaced out: every 4 hours, every 30 minutes when a game kicks off within 2 hours.
 async function bet365Odds() {
-  if (!OR_KEY) { state.b365Status = { ok: false, message: "Not set up" }; return; }
+  if (!OR_KEY) { state.b365Status = { ok: false, message: "Not set up" }; console.log("  Bet365 odds: no ODDSRELAY_KEY secret found, add it in Settings > Secrets and variables > Actions"); return; }
   const st = state.b365Status || {};
   const last = st.pulled ? Date.parse(st.pulled) : 0, mins = (now - last) / 6e4;
   const busy = state.fixtures.some((f) => { const m = (Date.parse(f.ko) - now) / 6e4; return m <= 120 && m >= 0; });
-  if (!(busy ? mins >= 28 : mins >= 235)) return;
+  const gap = busy ? 28 : 235;
+  if (!MANUAL && mins < gap) { console.log(`  Bet365 odds: last fetched ${Math.round(mins)} min ago, next in about ${Math.round(gap - mins)} min (press Run workflow to fetch now)`); return; }
   const iso = (t) => new Date(t).toISOString().replace(/\.\d+Z$/, "Z");
   const q = new URLSearchParams({ region: "uk", format: "bare", sports: "soccer_england", markets: "h2h", bookmakers: "bet365",
     commenceTimeFrom: iso(now.getTime()), commenceTimeTo: iso(now.getTime() + 10 * 864e5) });
