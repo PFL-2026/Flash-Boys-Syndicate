@@ -24,6 +24,7 @@ jobs:
         run: node scripts/fetch-football.mjs
         env:
           ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+          ODDSRELAY_KEY: ${{ secrets.ODDSRELAY_KEY }}
       - name: Save to repo
         run: |
           git config user.name "flash-boys-bot"
