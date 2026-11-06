@@ -10,6 +10,8 @@ const ESPN = process.env.ESPN_BASE || "https://site.api.espn.com/apis/site/v2/sp
 const ESPN_ROOT = process.env.ESPN_ROOT || "https://site.api.espn.com/apis/site/v2/sports/soccer";
 const ODDS = process.env.ODDS_BASE || "https://api.the-odds-api.com/v4/sports/soccer_epl";
 const ODDS_KEY = process.env.ODDS_API_KEY;
+const OR_BASE = process.env.ODDSRELAY_BASE || "https://api.oddsrelay.io";
+const OR_KEY = process.env.ODDSRELAY_KEY;
 const OUT = "data/fpl.json";
 const now = new Date();
 
@@ -18,6 +20,7 @@ try { before = fs.readFileSync(OUT, "utf8"); state = JSON.parse(before); } catch
 state.live = state.live || {}; // finished gameweeks already processed: { gw: true }
 state.lineups = state.lineups || {}; // FPL fixture id -> confirmed lineups from ESPN
 state.odds = state.odds || {};       // FPL fixture id -> Betfair Exchange match odds
+state.b365 = state.b365 || {};       // FPL fixture id -> Bet365 match odds (via OddsRelay)
 
 async function get(path, base = BASE) {
   const res = await fetch(`${base}/${path}`, {
@@ -101,7 +104,11 @@ async function main() {
   try { await espnResults(); }
   catch (e) { console.error("ESPN results error:", e.message); }
 
-  // 6. Betfair Exchange match odds via The Odds API (only if a key is set up)
+  // 6. Bet365 match odds via OddsRelay (only if a key is set up)
+  try { await bet365Odds(); }
+  catch (e) { console.error("Bet365 odds error:", e.message); state.b365Status = Object.assign({}, state.b365Status, { ok: false, message: e.message, pulled: now.toISOString() }); }
+
+  // 7. Betfair Exchange match odds via The Odds API (only if a key is set up)
   try { await exchangeOdds(); }
   catch (e) { console.error("Odds error:", e.message); state.oddsStatus = Object.assign({}, state.oddsStatus, { ok: false, message: e.message, pulled: now.toISOString() }); }
 }
@@ -127,6 +134,54 @@ async function espnResults() {
   }
   state.results = out;
   console.log(`  ESPN results: ${out.length} finished game(s) in the last 3 days`);
+}
+
+// Bet365 via OddsRelay. Tokens: the free trial is 50,000 for 14 days and Starter 250,000 a month.
+// Each call is priced first with a free quote, unchanged boards come back free (ETag),
+// and calls are spaced out: every 4 hours, every 30 minutes when a game kicks off within 2 hours.
+async function bet365Odds() {
+  if (!OR_KEY) { state.b365Status = { ok: false, message: "Not set up" }; return; }
+  const st = state.b365Status || {};
+  const last = st.pulled ? Date.parse(st.pulled) : 0, mins = (now - last) / 6e4;
+  const busy = state.fixtures.some((f) => { const m = (Date.parse(f.ko) - now) / 6e4; return m <= 120 && m >= 0; });
+  if (!(busy ? mins >= 28 : mins >= 235)) return;
+  const iso = (t) => new Date(t).toISOString().replace(/\.\d+Z$/, "Z");
+  const q = new URLSearchParams({ region: "uk", format: "bare", sports: "soccer_england", markets: "h2h", bookmakers: "bet365",
+    commenceTimeFrom: iso(now.getTime()), commenceTimeTo: iso(now.getTime() + 10 * 864e5) });
+  const headers = { Authorization: `Bearer ${OR_KEY}`, "Accept-Encoding": "gzip", Accept: "application/json" };
+  // free quote first, so a price change on their side can't drain the allowance
+  const qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers });
+  const quote = await qr.json().catch(() => ({}));
+  if (!qr.ok) throw new Error((quote.error && (quote.error.code + ": " + quote.error.message)) || `HTTP ${qr.status}`);
+  if (quote.remaining != null && quote.cost > quote.remaining) { state.b365Status = Object.assign({}, st, { ok: false, message: "Out of OddsRelay tokens", pulled: now.toISOString(), remaining: quote.remaining }); return; }
+  if (quote.cost > 3000) { state.b365Status = Object.assign({}, st, { ok: false, message: `Call would cost ${quote.cost} tokens, skipped`, pulled: now.toISOString() }); return; }
+  const h2 = Object.assign({}, headers); if (st.etag) h2["If-None-Match"] = st.etag;
+  const res = await fetch(`${OR_BASE}/v2/odds/standard?${q}`, { headers: h2 });
+  const remaining = res.headers.get("x-tokens-remaining");
+  if (res.status === 304) { state.b365Status = Object.assign({}, st, { ok: true, pulled: now.toISOString(), remaining: remaining != null ? +remaining : st.remaining }); console.log("  Bet365 odds: unchanged (free)"); return; }
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((body.error && (body.error.code + ": " + body.error.message)) || `HTTP ${res.status}`);
+  const events = Array.isArray(body) ? body : (body.data || []);
+  let matched = 0;
+  const fresh = {};
+  events.forEach((e) => {
+    const f = state.fixtures.find((x) => Math.abs(Date.parse(x.ko) - Date.parse(e.commence_time)) < 3 * 36e5
+      && sameTeam(e.home_team, state.teams[x.h].name) && sameTeam(e.away_team, state.teams[x.a].name));
+    if (!f) return;
+    const mk = (e.markets || []).find((m) => m.key === "h2h");
+    if (!mk) return;
+    const price = (pred) => { const o = (mk.outcomes || []).find(pred); const b = o && (o.back || []).find((x) => x.bookmaker === "bet365"); return b ? b.price : null; };
+    const h = price((o) => o.name === e.home_team || sameTeam(o.name, e.home_team));
+    const d = price((o) => /^draw$/i.test(o.name));
+    const a = price((o) => o.name === e.away_team || sameTeam(o.name, e.away_team));
+    if (!h || !d || !a) return;
+    fresh[f.id] = { h, d, a, at: now.toISOString() };
+    matched++;
+  });
+  Object.assign(state.b365, fresh);
+  Object.keys(state.b365).forEach((id) => { const f = state.fixtures.find((x) => String(x.id) === id); if (!f || (f.done && Date.parse(f.ko) < now - 864e5)) delete state.b365[id]; });
+  state.b365Status = { ok: true, pulled: now.toISOString(), remaining: remaining != null ? +remaining : null, matched, cost: quote.cost, etag: res.headers.get("etag") || null };
+  console.log(`  Bet365 odds: ${matched} Premier League game(s) priced, cost ${quote.cost} tokens (left: ${remaining ?? "?"})`);
 }
 
 // Free plan = 500 credits a month and one pull costs 1 credit, so pull sparingly:
