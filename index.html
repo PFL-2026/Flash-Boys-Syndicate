@@ -411,6 +411,10 @@ details.gm .pbar{height:24px;margin:7px 0 8px;font-size:12px}
 .mk .tag{display:inline-block;margin-bottom:4px}
 .mk .tn{margin-top:6px}
 .pnote{font-size:11px;line-height:1.5}
+
+.sg-tot.three{grid-template-columns:repeat(3,1fr)}
+.sg-tot b.pos{color:var(--win)} .sg-tot b.neg{color:var(--loss)}
+.sg-warn{font-size:12px;color:var(--gold-hi);background:rgba(232,182,76,.1);border-radius:8px;padding:8px 10px;margin:0 0 10px}
 </style>
 </head>
 <body>
@@ -797,6 +801,13 @@ var FBModel = (function(){
   function bfxTag(){ return el("span","bfx","Betfair Exchange"); }
   function valTag(p, d){ var e = edgeOf(p, d); return el("span","vt " + (e > 0 ? "pos" : "neg"), e > 0 ? "value +" + Math.round(e*100) + "%" : Math.round(e*100) + "%"); }
   function playerName(id){ var p = FPL && FPL.players[id]; return p ? p[0] : "?"; }
+  function koDate(f){ var x = FPL && FPLMAP[fkey(f)]; return x && x.ko ? isoDay(new Date(x.ko)) : f.date; }
+  function koSort(f){ var x = FPL && FPLMAP[fkey(f)]; return x && x.ko ? x.ko : f.date + "T" + (f.time || "15:00"); }
+  function koTime(f){
+    var x = FPL && FPLMAP[fkey(f)];
+    if(x && x.ko) return new Date(x.ko).toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    return f.time || "";
+  }
   function predFor(f){
     if(!MODEL || !f || f.lg !== "en.1") return null;
     return FBModel.predict(MODEL, f.home, f.away);
@@ -1046,7 +1057,8 @@ var FBModel = (function(){
     else {
     var lastDay = null;
     games.forEach(function(f){
-      if(f.date !== lastDay){ lastDay = f.date; body.appendChild(el("div","pday", new Date(f.date + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}))); }
+      var kd = koDate(f);
+      if(kd !== lastDay){ lastDay = kd; body.appendChild(el("div","pday", new Date(kd + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long"}))); }
       body.appendChild(gameRow(f));
     });
     }
@@ -1071,7 +1083,7 @@ var FBModel = (function(){
     if(opts.length){
       if(!opts.some(function(o){ return o.gw === PRED_GW; })) PRED_GW = opts[0].gw;
       return FIX_LIST.filter(function(f){ var x = FPLMAP[fkey(f)]; return f.lg === "en.1" && !f.ft && x && x.gw === PRED_GW; })
-        .sort(function(a,b){ return (a.date + a.time).localeCompare(b.date + b.time); });
+        .sort(function(a,b){ return koSort(a).localeCompare(koSort(b)); });
     }
     return upcoming().filter(function(f){ return f.lg === "en.1"; });
   }
@@ -1086,7 +1098,7 @@ var FBModel = (function(){
       box.appendChild(sel);
     } else box.appendChild(el("div","pgw","Next 10 days"));
     var seg = el("div","pseg");
-    [["games","All games"],["treble","Suggested treble"]].forEach(function(v){
+    [["games","All games"],["treble","Value treble"]].forEach(function(v){
       var b = el("button",null,v[1]); b.type = "button"; b.setAttribute("aria-pressed", PRED_VIEW === v[0] ? "true" : "false");
       b.addEventListener("click", function(){ PRED_VIEW = v[0]; renderPreds(); });
       seg.appendChild(b);
@@ -1102,7 +1114,7 @@ var FBModel = (function(){
   function fracFromDec(d){ return fairOdds(1/d); }
   function pickRow(k){
     var r = el("div","sg-row");
-    var l = el("div"); l.appendChild(el("b",null,k.label)); l.appendChild(el("small",null,k.f.home + " v " + k.f.away + " · " + dayLabel(k.f.date) + (k.f.time ? " " + k.f.time : "")));
+    var l = el("div"); l.appendChild(el("b",null,k.label)); l.appendChild(el("small",null,k.f.home + " v " + k.f.away + " · " + dayLabel(koDate(k.f)) + (koTime(k.f) ? " " + koTime(k.f) : "")));
     r.appendChild(l);
     var rr = el("div","sg-r"); rr.appendChild(el("b",null,pct(k.p))); rr.appendChild(el("small",null,"fair " + fairOdds(k.p)));
     var price = exPrice(exch(k.f), k.code);
@@ -1110,32 +1122,61 @@ var FBModel = (function(){
     r.appendChild(rr);
     return r;
   }
+  // Value legs: for each game, the result where the model's chance beats the Betfair Exchange
+  // price by the most (after 5% commission). Pre-match prices only; ignores long shots under 15%.
+  var MIN_P = 0.15, MIN_E = 0.03, MAX_E = 0.30;
+  function valueLegs(games, big){
+    var out = [];
+    games.forEach(function(f){
+      var pr = predFor(f), ex = exch(f); if(!pr || !ex || ex.inplay) return;
+      var best = null;
+      [["H",pr.home],["D",pr.draw],["A",pr.away]].forEach(function(s){
+        var d = exPrice(ex, s[0]); if(!d || s[1] < MIN_P) return;
+        var e = edgeOf(s[1], d), ok = big ? e > MAX_E : e >= MIN_E && e <= MAX_E;
+        if(ok && (!best || e > best.e)) best = {f:f, code:s[0], p:s[1], label:outcomeLabel(f, s[0]), e:e, d:d};
+      });
+      if(best) out.push(best);
+    });
+    return out.sort(function(a,b){ return b.e - a.e; });
+  }
+  function appendBig(card, games){
+    var big = valueLegs(games, true);
+    if(!big.length) return;
+    card.appendChild(el("div","sg-h2","Big gaps · check first"));
+    card.appendChild(el("p","sg-sub","Over 30% apart from the market. Usually the model missing something (injuries, form), so not in the treble."));
+    big.slice(0,4).forEach(function(k){ card.appendChild(pickRow(k)); });
+  }
   function renderSuggest(body, games){
-    var picks = games.map(bestPick).filter(Boolean).sort(function(a,b){ return b.p - a.p; });
     var card = el("div","sg");
-    if(PRED_VIEW === "treble"){
-      card.appendChild(el("div","sg-h","Suggested treble"));
-      if(picks.length < 3){ card.appendChild(el("p","sg-note","Not enough games in this gameweek for a treble yet.")); body.appendChild(card); return; }
-      var legs = picks.slice(0,3), p = legs.reduce(function(a,k){ return a * k.p; }, 1);
-      card.appendChild(el("p","sg-sub","Three most likely results this gameweek."));
-      legs.forEach(function(k){ card.appendChild(pickRow(k)); });
-      var tot = el("div","sg-tot");
-      var a = el("div"); a.appendChild(el("small",null,"Chance all three land")); a.appendChild(el("b",null,pct(p))); tot.appendChild(a);
-      var b = el("div"); b.appendChild(el("small",null,"Fair treble odds")); b.appendChild(el("b",null,fairOdds(p))); tot.appendChild(b);
-      card.appendChild(tot);
-      var prices = legs.map(function(k){ return exPrice(exch(k.f), k.code); });
-      if(prices.every(Boolean)){
-        var tx = prices.reduce(function(a,b){ return a*b; }, 1), eq = el("div","sg-ex");
-        var top = el("div"); top.appendChild(bfxTag()); top.appendChild(el("b",null,"equivalent " + tx.toFixed(2))); eq.appendChild(top);
-        eq.appendChild(el("small",null,"Three exchange prices multiplied. A guide only: the exchange doesn’t offer trebles."));
-        card.appendChild(eq);
-      }
-      card.appendChild(el("p","sg-value","Value if the bookie pays more than " + fairOdds(p) + "."));
-      if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
+    card.appendChild(el("div","sg-h","Value treble"));
+    var priced = games.filter(function(f){ var ex = exch(f); return ex && !ex.inplay; }).length;
+    if(!priced){
+      card.appendChild(el("p","sg-sub", FPL && FPL.oddsStatus && FPL.oddsStatus.ok ? "No pre-match Betfair Exchange prices for this gameweek yet. Check back nearer kick-off." : "Needs Betfair Exchange prices to find value. Connect the odds feed to switch this on."));
+      body.appendChild(card); return;
     }
-    card.appendChild(el("p","sg-note","Most likely, not guaranteed: the model calls single results right 48% of the time."));
+    var legs = valueLegs(games);
+    if(legs.length < 3){
+      card.appendChild(el("p","sg-sub", legs.length ? "Only " + legs.length + " value bet" + (legs.length > 1 ? "s" : "") + " this gameweek, not enough for a treble. Worth considering as singles:" : "No value bets this gameweek: the market and the model agree on every game."));
+      legs.forEach(function(k){ card.appendChild(pickRow(k)); });
+      appendBig(card, games);
+      body.appendChild(card); return;
+    }
+    legs = legs.slice(0,3);
+    card.appendChild(el("p","sg-sub","Best value vs Betfair Exchange, one leg per game. Edges of 3–30% only."));
+    legs.forEach(function(k){ card.appendChild(pickRow(k)); });
+    var p = legs.reduce(function(a,k){ return a * k.p; }, 1);
+    var tx = legs.reduce(function(a,k){ return a * k.d; }, 1);
+    var tv = p * legs.reduce(function(a,k){ return a * netDec(k.d); }, 1) - 1;
+    var tot = el("div","sg-tot three");
+    [["Chance",pct(p)],["Exchange",tx.toFixed(2)],["Treble value",(tv > 0 ? "+" : "") + Math.round(tv*100) + "%"]].forEach(function(x, i){ var c = el("div"); c.appendChild(el("small",null,x[0])); c.appendChild(el("b", i === 2 ? (tv > 0 ? "pos" : "neg") : null, x[1])); tot.appendChild(c); });
+    card.appendChild(tot);
+    card.appendChild(el("p","sg-value","Fair treble price " + fairOdds(p) + ". Back it at " + fairOdds(p) + " or bigger."));
+    if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
+    appendBig(card, games);
+    card.appendChild(el("p","sg-note","Value = model chance vs exchange price after 5% commission. Ranked by value, not likelihood, so legs can be underdogs or draws."));
     body.appendChild(card);
   }
+
   var SINGLE_P = null;
   function useTreble(legs){
     closePredsForSheet();
@@ -1165,7 +1206,7 @@ var FBModel = (function(){
     var pr = predFor(f), news = teamNews(f), ex = exch(f);
     var d = el("details","gm"), sm = el("summary");
     // collapsed: time, teams, result %, key goals stats
-    var top = el("div","gm-top"); top.appendChild(el("span","gm-t", f.time || "TBC"));
+    var top = el("div","gm-top"); top.appendChild(el("span","gm-t", koTime(f) || "TBC"));
     var tags = el("span","gm-tags");
     if(news && news.auto) tags.appendChild(el("span","gt ok", news.auto.verified ? "XIs ✓" : "XIs"));
     if(ex && ex.inplay) tags.appendChild(el("span","gt live","In play"));
