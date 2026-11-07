@@ -160,7 +160,8 @@ async function bet365Odds() {
       const rows = Array.isArray(sj) ? sj : (sj.data || []);
       const keys = new Set();
       rows.forEach((r) => { if (/soccer_england/.test(r.key || r.sport_key || r.competition_key || "")) (r.markets || []).forEach((m) => keys.add(typeof m === "string" ? m : (m.key || m.market || ""))); });
-      const tk = [...keys].find((k) => /^totals$/i.test(k)) || [...keys].find((k) => /total|over.?under|goals/i.test(k)) || null;
+      // if the list doesn't name markets, try the standard name; a wrong name is corrected below from OddsRelay's error reply
+      const tk = [...keys].find((k) => /^totals$/i.test(k)) || [...keys].find((k) => /total|over.?under|goals/i.test(k)) || "totals";
       state.meta.totalsKey = tk; state.meta.totalsDay = today;
       console.log(`  Bet365 odds: markets offered for English football: ${[...keys].join(", ") || "none listed"}; goals market used: ${tk || "none found"}`);
     } catch (e) { console.log("  Bet365 odds: couldn't read the markets list: " + e.message); }
@@ -173,9 +174,12 @@ async function bet365Odds() {
   let qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers });
   let quote = await qr.json().catch(() => ({}));
   if (!qr.ok && quote.error && quote.error.code === "unknown_market") {
-    console.log(`  Bet365 odds: goals market '${state.meta.totalsKey}' not accepted (valid: ${(quote.error.valid || quote.valid || []).join(", ")}); using results only`);
-    state.meta.totalsKey = null; q.set("markets", "h2h");
+    const valid = quote.error.valid || quote.valid || [];
+    const alt = valid.find((k) => /^totals?$/i.test(k)) || valid.find((k) => /total|over.?under|goals/i.test(k) && !/team|half|h1|h2|corner|card|alt/i.test(k)) || null;
+    console.log(`  Bet365 odds: goals market '${state.meta.totalsKey}' not accepted. Valid markets: ${valid.join(", ") || "not listed"}. Trying: ${alt || "results only"}`);
+    state.meta.totalsKey = alt; q.set("markets", ["h2h"].concat(alt ? [alt] : []).join(","));
     qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers }); quote = await qr.json().catch(() => ({}));
+    if (!qr.ok && quote.error && quote.error.code === "unknown_market") { state.meta.totalsKey = null; q.set("markets", "h2h"); qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers }); quote = await qr.json().catch(() => ({})); }
   }
   if (!qr.ok) throw new Error((quote.error && (quote.error.code + ": " + quote.error.message)) || `HTTP ${qr.status}`);
   if (quote.remaining != null && quote.cost > quote.remaining) { state.b365Status = Object.assign({}, st, { ok: false, message: "Out of OddsRelay tokens", pulled: now.toISOString(), remaining: quote.remaining }); return; }
