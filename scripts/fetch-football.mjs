@@ -23,6 +23,7 @@ state.lineups = state.lineups || {}; // FPL fixture id -> confirmed lineups from
 state.odds = state.odds || {};       // FPL fixture id -> Betfair Exchange match odds
 state.b365 = state.b365 || {};       // FPL fixture id -> Bet365 match odds (via OddsRelay)
 state.closing = state.closing || {}; // FPL fixture id -> last Bet365 price before kick-off (kept for the track record)
+state.meta = state.meta || {};       // job settings (e.g. the goals market's name)
 
 async function get(path, base = BASE) {
   const res = await fetch(`${base}/${path}`, {
@@ -151,6 +152,7 @@ async function bet365Odds() {
   const headers = { Authorization: `Bearer ${OR_KEY}`, "Accept-Encoding": "gzip", Accept: "application/json" };
 
   // Find the goals (over/under) market's name from the free sports list, once a day
+  const today = now.toISOString().slice(0, 10);
   if (!state.meta.totalsDay || state.meta.totalsDay !== today) {
     try {
       const sr = await fetch(`${OR_BASE}/v2/sports`, { headers });
