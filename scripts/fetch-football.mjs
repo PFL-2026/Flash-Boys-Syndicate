@@ -22,6 +22,7 @@ state.live = state.live || {}; // finished gameweeks already processed: { gw: tr
 state.lineups = state.lineups || {}; // FPL fixture id -> confirmed lineups from ESPN
 state.odds = state.odds || {};       // FPL fixture id -> Betfair Exchange match odds
 state.b365 = state.b365 || {};       // FPL fixture id -> Bet365 match odds (via OddsRelay)
+state.closing = state.closing || {}; // FPL fixture id -> last Bet365 price before kick-off (kept for the track record)
 
 async function get(path, base = BASE) {
   const res = await fetch(`${base}/${path}`, {
@@ -147,43 +148,79 @@ async function bet365Odds() {
   const busy = state.fixtures.some((f) => { const m = (Date.parse(f.ko) - now) / 6e4; return m <= 120 && m >= 0; });
   const gap = busy ? 28 : 235;
   if (!MANUAL && mins < gap) { console.log(`  Bet365 odds: last fetched ${Math.round(mins)} min ago, next in about ${Math.round(gap - mins)} min (press Run workflow to fetch now)`); return; }
-  const iso = (t) => new Date(t).toISOString().replace(/\.\d+Z$/, "Z");
-  const q = new URLSearchParams({ region: "uk", format: "bare", sports: "soccer_england", markets: "h2h", bookmakers: "bet365",
-    commenceTimeFrom: iso(now.getTime()), commenceTimeTo: iso(now.getTime() + 10 * 864e5) });
   const headers = { Authorization: `Bearer ${OR_KEY}`, "Accept-Encoding": "gzip", Accept: "application/json" };
+
+  // Find the goals (over/under) market's name from the free sports list, once a day
+  if (!state.meta.totalsDay || state.meta.totalsDay !== today) {
+    try {
+      const sr = await fetch(`${OR_BASE}/v2/sports`, { headers });
+      const sj = await sr.json();
+      const rows = Array.isArray(sj) ? sj : (sj.data || []);
+      const keys = new Set();
+      rows.forEach((r) => { if (/soccer_england/.test(r.key || r.sport_key || r.competition_key || "")) (r.markets || []).forEach((m) => keys.add(typeof m === "string" ? m : (m.key || m.market || ""))); });
+      const tk = [...keys].find((k) => /^totals$/i.test(k)) || [...keys].find((k) => /total|over.?under|goals/i.test(k)) || null;
+      state.meta.totalsKey = tk; state.meta.totalsDay = today;
+      console.log(`  Bet365 odds: markets offered for English football: ${[...keys].join(", ") || "none listed"}; goals market used: ${tk || "none found"}`);
+    } catch (e) { console.log("  Bet365 odds: couldn't read the markets list: " + e.message); }
+  }
+  const markets = ["h2h"].concat(state.meta.totalsKey ? [state.meta.totalsKey] : []).join(",");
+  const iso = (t) => new Date(t).toISOString().replace(/\.\d+Z$/, "Z");
+  const q = new URLSearchParams({ region: "uk", format: "bare", sports: "soccer_england", markets, bookmakers: "bet365",
+    commenceTimeFrom: iso(now.getTime()), commenceTimeTo: iso(now.getTime() + 10 * 864e5) });
   // free quote first, so a price change on their side can't drain the allowance
-  const qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers });
-  const quote = await qr.json().catch(() => ({}));
+  let qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers });
+  let quote = await qr.json().catch(() => ({}));
+  if (!qr.ok && quote.error && quote.error.code === "unknown_market") {
+    console.log(`  Bet365 odds: goals market '${state.meta.totalsKey}' not accepted (valid: ${(quote.error.valid || quote.valid || []).join(", ")}); using results only`);
+    state.meta.totalsKey = null; q.set("markets", "h2h");
+    qr = await fetch(`${OR_BASE}/v2/odds/standard?${q}&quote=true`, { headers }); quote = await qr.json().catch(() => ({}));
+  }
   if (!qr.ok) throw new Error((quote.error && (quote.error.code + ": " + quote.error.message)) || `HTTP ${qr.status}`);
   if (quote.remaining != null && quote.cost > quote.remaining) { state.b365Status = Object.assign({}, st, { ok: false, message: "Out of OddsRelay tokens", pulled: now.toISOString(), remaining: quote.remaining }); return; }
   if (quote.cost > 3000) { state.b365Status = Object.assign({}, st, { ok: false, message: `Call would cost ${quote.cost} tokens, skipped`, pulled: now.toISOString() }); return; }
-  const h2 = Object.assign({}, headers); if (st.etag) h2["If-None-Match"] = st.etag;
-  const res = await fetch(`${OR_BASE}/v2/odds/standard?${q}`, { headers: h2 });
+  const res = await fetch(`${OR_BASE}/v2/odds/standard?${q}`, { headers });
   const remaining = res.headers.get("x-tokens-remaining");
-  if (res.status === 304) { state.b365Status = Object.assign({}, st, { ok: true, pulled: now.toISOString(), remaining: remaining != null ? +remaining : st.remaining }); console.log("  Bet365 odds: unchanged (free)"); return; }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error((body.error && (body.error.code + ": " + body.error.message)) || `HTTP ${res.status}`);
   const events = Array.isArray(body) ? body : (body.data || []);
-  let matched = 0;
-  const fresh = {};
+  const b365price = (o) => { const b = o && (o.back || []).find((x) => x.bookmaker === "bet365"); return b ? b.price : null; };
+  let sample = null;
+  const goals25 = (e) => {
+    const mk = (e.markets || []).find((m) => m.key === state.meta.totalsKey); if (!mk) return null;
+    const line = (o) => { const v = o.point ?? o.line ?? o.handicap ?? (String(o.name).match(/(\d+(?:\.\d+)?)/) || [])[1]; return v != null ? parseFloat(v) : null; };
+    if (!sample) sample = (mk.outcomes || []).slice(0, 2).map((o) => JSON.stringify(o).slice(0, 120)).join(" | ");
+    const over = (mk.outcomes || []).find((o) => /over/i.test(o.name) && line(o) === 2.5);
+    const under = (mk.outcomes || []).find((o) => /under/i.test(o.name) && line(o) === 2.5);
+    const ov = b365price(over), un = b365price(under);
+    return ov && un ? { over: ov, under: un } : null;
+  };
+  let matched = 0, champ = 0, withGoals = 0;
+  const fresh = {}, other = [];
   events.forEach((e) => {
-    const f = state.fixtures.find((x) => Math.abs(Date.parse(x.ko) - Date.parse(e.commence_time)) < 3 * 36e5
-      && sameTeam(e.home_team, state.teams[x.h].name) && sameTeam(e.away_team, state.teams[x.a].name));
-    if (!f) return;
-    const mk = (e.markets || []).find((m) => m.key === "h2h");
-    if (!mk) return;
-    const price = (pred) => { const o = (mk.outcomes || []).find(pred); const b = o && (o.back || []).find((x) => x.bookmaker === "bet365"); return b ? b.price : null; };
+    const mk = (e.markets || []).find((m) => m.key === "h2h"); if (!mk) return;
+    const price = (pred) => b365price((mk.outcomes || []).find(pred));
     const h = price((o) => o.name === e.home_team || sameTeam(o.name, e.home_team));
     const d = price((o) => /^draw$/i.test(o.name));
     const a = price((o) => o.name === e.away_team || sameTeam(o.name, e.away_team));
     if (!h || !d || !a) return;
-    fresh[f.id] = { h, d, a, at: now.toISOString() };
-    matched++;
+    const g = goals25(e); if (g) withGoals++;
+    const row = { h, d, a, at: now.toISOString() }; if (g) { row.o25 = g.over; row.u25 = g.under; }
+    const f = state.fixtures.find((x) => Math.abs(Date.parse(x.ko) - Date.parse(e.commence_time)) < 3 * 36e5
+      && sameTeam(e.home_team, state.teams[x.h].name) && sameTeam(e.away_team, state.teams[x.a].name));
+    if (f) { fresh[f.id] = row; matched++; return; }
+    if (/championship/i.test(e.competition_key || e.sport_key || "")) { other.push(Object.assign({ lg: "en.2", id: e.event_id, ko: e.commence_time, home: e.home_team, away: e.away_team }, row)); champ++; }
   });
   Object.assign(state.b365, fresh);
+  Object.keys(fresh).forEach((id) => { state.closing[id] = fresh[id]; }); // only pre-kick-off games are fetched
   Object.keys(state.b365).forEach((id) => { const f = state.fixtures.find((x) => String(x.id) === id); if (!f || (f.done && Date.parse(f.ko) < now - 864e5)) delete state.b365[id]; });
-  state.b365Status = { ok: true, pulled: now.toISOString(), remaining: remaining != null ? +remaining : null, matched, cost: quote.cost, etag: res.headers.get("etag") || null };
-  console.log(`  Bet365 odds: ${matched} Premier League game(s) priced, cost ${quote.cost} tokens (left: ${remaining ?? "?"})`);
+  state.b365x = other;
+  // Championship closing prices, kept for the track record
+  state.closingx = state.closingx || {};
+  other.forEach((r) => { state.closingx[r.id] = r; });
+  Object.keys(state.closingx).forEach((id) => { if (Date.parse(state.closingx[id].ko) < now - 120 * 864e5) delete state.closingx[id]; });
+  state.b365Status = { ok: true, pulled: now.toISOString(), remaining: remaining != null ? +remaining : null, matched, champ, goals: withGoals, cost: quote.cost };
+  console.log(`  Bet365 odds: ${matched} Premier League + ${champ} Championship game(s) priced, ${withGoals} with over/under 2.5 goals, cost ${quote.cost} tokens (left: ${remaining ?? "?"})`);
+  if (state.meta.totalsKey && !withGoals && sample) console.log(`  Bet365 odds: goals prices not recognised, sample outcomes: ${sample}`);
 }
 
 // Free plan = 500 credits a month and one pull costs 1 credit, so pull sparingly:
