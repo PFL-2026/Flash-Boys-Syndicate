@@ -153,7 +153,7 @@ async function bet365Odds() {
 
   // Find the goals (over/under) market's name from the free sports list, once a day
   const today = now.toISOString().slice(0, 10);
-  if (!state.meta.totalsDay || state.meta.totalsDay !== today) {
+  if (!state.meta.totalsKey || state.meta.totalsDay !== today) {
     try {
       const sr = await fetch(`${OR_BASE}/v2/sports`, { headers });
       const sj = await sr.json();
