@@ -511,6 +511,13 @@ details.gm .pbar{margin-top:4px}
 .pmoney{grid-template-columns:repeat(3,1fr)!important;margin-top:8px}
 .pmoney b{font-size:22px!important}
 .pnote2{font-size:11px;color:var(--muted);margin:6px 2px 0}
+
+.whosin{display:flex;align-items:center;gap:10px;margin:0 0 10px}
+.whosin > span{font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;white-space:nowrap}
+.pchips{display:flex;flex-wrap:wrap;gap:6px}
+.pchips button{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:800}
+.pchips button[aria-pressed="true"]{background:rgba(232,182,76,.12);border-color:var(--gold);color:var(--gold)}
+.pchips button[aria-pressed="true"]::before{content:"✓ "}
 </style>
 </head>
 <body>
@@ -594,9 +601,10 @@ details.gm .pbar{margin-top:4px}
     <div class="sheet-head"><h3 id="sheetTitle">New treble</h3>
       <label class="stake"><span>£</span><input id="fStake" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Stake" aria-label="Stake in pounds"></label></div>
     <div class="when" role="group" aria-label="When"><button type="button" data-w="up" aria-pressed="true">Upcoming</button><button type="button" data-w="past" aria-pressed="false">Already played</button></div>
+    <div class="whosin"><span>Who’s in</span><div class="pchips" id="pChips" role="group" aria-label="Players in this bet"></div></div>
     <label class="pastdate" id="pastDate" hidden><span>Date of the game</span><input type="date" id="fDate"></label>
     <div class="single-form" id="singleForm" hidden>
-      <p class="joint" id="jointNote"></p>
+      <p class="joint" id="jointNote" hidden></p>
       <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Single odds"></div>
       <div class="obtns wl" id="sWL" role="group" aria-label="Result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
     </div>
@@ -1188,9 +1196,11 @@ var FBModel = (function(){
     [["Picks",picks.length],["Landed",won],["Lost",lost],["Hit rate",rate]].forEach(function(s,i){ var d=el("div"); d.appendChild(el("small",null,s[0])); d.appendChild(el("b", i===1&&won?"pos":i===2&&lost?"neg":null, String(s[1]))); st.appendChild(d); });
     body.appendChild(st);
     // money: every syndicate bet is shared equally between members
-    var share = 1 / Math.max(1, MEMBERS.length), mStake = 0, mRet = 0, mOpen = 0;
+    var mStake = 0, mRet = 0, mOpen = 0, inCount = 0;
     bets.forEach(function(b){
-      var s = (Number(b.stake) || 0) * share, r = statusOf(b);
+      var who = betPlayers(b); if(!who.some(function(m){ return m.toLowerCase() === name.toLowerCase(); })) return;
+      inCount++;
+      var share = 1 / who.length, s = (Number(b.stake) || 0) * share, r = statusOf(b);
       mStake += s;
       if(r === "open") mOpen += s; else mRet += payoutOf(b) * share;
     });
@@ -1198,7 +1208,7 @@ var FBModel = (function(){
     var money = el("div","pstats pmoney");
     [["Staked", gbp(mStake)],["Returned", gbp(mRet)],["Profit", signed(mPl)]].forEach(function(s, i){ var d = el("div"); d.appendChild(el("small",null,s[0])); d.appendChild(el("b", i === 2 ? (mPl > 0 ? "pos" : mPl < 0 ? "neg" : null) : null, s[1])); money.appendChild(d); });
     body.appendChild(money);
-    body.appendChild(el("p","pnote2", "Their " + Math.round(share*100) + "% share of every syndicate bet (stakes and returns split equally between " + MEMBERS.length + " members)" + (mOpen ? ". " + gbp(mOpen) + " still riding on live bets." : ".")));
+    body.appendChild(el("p","pnote2", "Their share of the " + inCount + " bet" + (inCount === 1 ? "" : "s") + " they were in: each stake and return split equally between the players in that bet" + (mOpen ? ". " + gbp(mOpen) + " still riding on live bets." : ".")));
     var ex = el("div","pextra");
     var fw = el("span",null,"Form"); var form = el("span","form");
     var settled = picks.filter(function(x){ return x.l.result==="won" || x.l.result==="lost"; }).slice(0,5);
@@ -1830,7 +1840,7 @@ var FBModel = (function(){
       var c = el("article","card");
       var h = el("div","card-head"); h.appendChild(el("b",null, isSingle(b) ? "Live single" : "Live treble"));
       var landed = legsOf(b).filter(function(l){ return l.result==="won"; }).length;
-      h.appendChild(el("span",null, isSingle(b) ? "Joint bet · " + shortDate(b.createdAt) : landed ? landed + " of 3 in · " + shortDate(b.createdAt) : shortDate(b.createdAt)));
+      h.appendChild(el("span",null, isSingle(b) ? (betPlayers(b).length < MEMBERS.length ? betPlayers(b).join(" & ") : "Joint bet") + " · " + shortDate(b.createdAt) : landed ? landed + " of 3 in · " + shortDate(b.createdAt) : shortDate(b.createdAt)));
       c.appendChild(h); c.appendChild(legList(b)); c.appendChild(foot(b));
       live.appendChild(c);
     });
@@ -1895,6 +1905,16 @@ var FBModel = (function(){
   });
 
   var CUSTOM = "__custom__", LEG_LG = ["en.1","en.1","en.1"], WHEN = "up", WL = {s:"", 0:"", 1:"", 2:""};
+  var PSEL = [];
+  function renderChips(){
+    var box = $("pChips"); box.textContent = "";
+    MEMBERS.forEach(function(m){
+      var b = el("button", null, m); b.type = "button"; b.setAttribute("aria-pressed", PSEL.indexOf(m) >= 0 ? "true" : "false");
+      b.addEventListener("click", function(){ var i = PSEL.indexOf(m); if(i >= 0) PSEL.splice(i,1); else PSEL.push(m); renderChips(); });
+      box.appendChild(b);
+    });
+  }
+  function betPlayers(b){ return b && Array.isArray(b.players) && b.players.length ? b.players : MEMBERS; }
   function setWL(id, key, v){ WL[key] = v; Array.prototype.forEach.call($(id).querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-r") === v ? "true" : "false"); }); }
   function showWL(){
     var past = WHEN === "past";
@@ -2051,6 +2071,7 @@ var FBModel = (function(){
   function addLabel(){ return "Confirm bet"; }
   function openSheet(b, m){
     editingId = b ? b.id : null; SINGLE_P = null;
+    PSEL = (b ? betPlayers(b) : MEMBERS).filter(function(m){ return MEMBERS.indexOf(m) >= 0; }).slice(); if(!PSEL.length) PSEL = MEMBERS.slice(); renderChips();
     WHEN = b && b.createdAt && (b.legs||[]).every(function(l){ var f = l.fixture && fixtureFor(fkey(l.fixture)); return f ? matchTime(f) <= Date.now() : true; }) && (b.legs||[]).some(function(l){ return l.fixture; }) ? "past" : "up";
     ["sWL","xWL0","xWL1","xWL2"].forEach(function(id, k){ setWL(id, k === 0 ? "s" : k - 1, ""); });
     $("fDate").value = b && b.createdAt ? isoDay(new Date(b.createdAt)) : isoDay(new Date());
@@ -2205,12 +2226,14 @@ var FBModel = (function(){
       if(!sp) return showError("Type the bet.");
       if(!toDecimal(so)) return showError("Check the odds. Use decimal odds, e.g. 2.50.");
       if(WHEN === "past" && !WL.s) return showError("Tap Won or Lost.");
+      if(!PSEL.length) return showError("Choose who’s in this bet.");
       showError("");
       var sold = editingId ? bets.filter(function(b){ return b.id===editingId; })[0] : null;
       var prevLeg = sold && (sold.legs||[])[0];
       var sres = WHEN === "past" ? WL.s : (prevLeg && prevLeg.pick===sp ? (prevLeg.result||"open") : "open");
       var sfields = {type:"single", stake:Math.round(stake*100)/100, legs:[{name:JOINT, joint:true, pick:sp.slice(0,100), odds:so.slice(0,10), fixture:null, outcome:null, result: sres}]};
       if(WHEN === "past" && $("fDate").value) sfields.createdAt = Date.parse($("fDate").value + "T12:00:00");
+      sfields.players = PSEL.slice();
       var snext = editingId ? bets.map(function(b){ return b.id===editingId ? Object.assign({}, b, sfields) : b; })
         : [Object.assign({id:"b" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), createdAt:Date.now()}, sfields)].concat(bets);
       commitAndGoHome(snext, editingId ? "Bet updated ✓" : "Single added ✓");
@@ -2233,7 +2256,8 @@ var FBModel = (function(){
       return {name:l.name.slice(0,40), pick:l.pick.slice(0,80), odds:l.odds.slice(0,10), fixture:l.fixture, outcome:l.outcome || null,
         result: l.custom && WHEN === "past" ? WL[i] : (prev && prev.pick===l.pick && !prev.auto ? (prev.result||"open") : "open")};
     });
-    var fields = {stake:Math.round(stake*100)/100, legs:cleanLegs};
+    if(!PSEL.length) return showError("Choose who’s in this bet.");
+    var fields = {players: PSEL.slice(), stake:Math.round(stake*100)/100, legs:cleanLegs};
     var next;
     if(editingId){
       next = bets.map(function(b){ return b.id===editingId ? Object.assign({}, b, fields) : b; });
