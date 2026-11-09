@@ -546,6 +546,9 @@ details.gm .pbar{margin-top:4px}
 .lgchips button{padding:6px 4px!important}
 .obtns button{padding:6px 4px!important}
 .lc-odds input{width:96px!important}
+
+.hmid{display:flex;flex-direction:column;gap:4px;min-width:0}
+.hwho{font-size:11px;font-weight:700;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -1212,7 +1215,8 @@ var FBModel = (function(){
     var parts = personParts(name);
     // keep the old shape used below: one entry per bet, with a combined "leg"
     var picks = parts.map(function(x){
-      var l = x.legs.length === 1 ? Object.assign({}, x.legs[0], {result:x.r}) :
+      var l = x.single ? Object.assign({}, x.legs[0], {pick:"Single: " + (x.legs[0].pick || ""), result:x.r}) :
+        x.legs.length === 1 ? Object.assign({}, x.legs[0], {result:x.r}) :
         {pick:(x.solo ? "Treble: " : x.legs.length === 2 ? "Double: " : "") + x.legs.map(function(k){ return k.pick; }).join(", "), odds:x.odds.toFixed(2), result:x.r, multi:x.legs};
       return {b:x.b, l:l};
     });
@@ -1872,7 +1876,7 @@ var FBModel = (function(){
       var c = el("article","card");
       var h = el("div","card-head"); h.appendChild(el("b",null, isSingle(b) ? "Live single" : "Live treble"));
       var landed = legsOf(b).filter(function(l){ return l.result==="won"; }).length;
-      h.appendChild(el("span",null, isSingle(b) ? (betPlayers(b).length < MEMBERS.length ? betPlayers(b).join(" & ") : "Joint bet") + " · " + shortDate(b.createdAt) : landed ? landed + " of 3 in · " + shortDate(b.createdAt) : shortDate(b.createdAt)));
+      h.appendChild(el("span",null, isSingle(b) ? whoOf(b) + " · " + shortDate(b.createdAt) : (landed ? landed + " of 3 in · " : "") + whoOf(b) + " · " + shortDate(b.createdAt)));
       c.appendChild(h); c.appendChild(legList(b)); c.appendChild(foot(b));
       live.appendChild(c);
     });
@@ -1882,13 +1886,16 @@ var FBModel = (function(){
     done.forEach(function(b){
       var r = statusOf(b), d = el("details","hrow"), sm = el("summary");
       sm.appendChild(el("span","hdate",shortDate(b.createdAt)));
+      var mid = el("span","hmid");
+      mid.appendChild(el("span","hwho", whoOf(b)));
       if(isSingle(b)){
-        var sp = el("span","spill " + r); sp.appendChild(el("i",null,"Single")); sp.appendChild(el("span",null,(legsOf(b)[0]||{}).pick||"")); sm.appendChild(sp);
+        var sp = el("span","spill " + r); sp.appendChild(el("i",null,"Single")); sp.appendChild(el("span",null,(legsOf(b)[0]||{}).pick||"")); mid.appendChild(sp);
       } else {
         var dots = el("span","dots");
         legsOf(b).forEach(function(l){ var lr=l.result||"open"; var dt = el("span","dot " + lr, initials(l.name)); dt.title = (l.name||"") + ": " + (l.pick||""); dots.appendChild(dt); });
-        sm.appendChild(dots);
+        mid.appendChild(dots);
       }
+      sm.appendChild(mid);
       var p = payoutOf(b), pl = p - (Number(b.stake)||0);
       var res = el("span","hres " + (pl>0?"pos":pl<0?"neg":""), r==="won" ? signed(pl) : r==="void" ? "Void" : signed(pl));
       res.appendChild(el("small",null, r==="won" ? "Won" : r==="void" ? "Stake back" : "Lost"));
@@ -1950,7 +1957,12 @@ var FBModel = (function(){
   function personParts(name){
     var key = String(name).trim().toLowerCase(), out = [];
     bets.forEach(function(b){
-      if(isSingle(b)) return;
+      if(isSingle(b)){
+        if(!betPlayers(b).some(function(m){ return m.toLowerCase() === key; })) return;
+        var sl = legsOf(b)[0] || {};
+        out.push({b:b, legs:[sl], solo:true, single:true, r:sl.result || "open", odds:toDecimal(sl.odds) || 1});
+        return;
+      }
       var all = legsOf(b), mine = all.filter(function(l){ return (l.name||"").trim().toLowerCase() === key; });
       if(!mine.length) return;
       var rs = mine.map(function(l){ return l.result || "open"; });
@@ -1959,6 +1971,12 @@ var FBModel = (function(){
       out.push({b:b, legs:mine, solo: mine.length === all.length, r:r, odds:odds});
     });
     return out.sort(function(a,c){ return (c.b.createdAt||0) - (a.b.createdAt||0); });
+  }
+  function andJoin(a){ return a.length > 1 ? a.slice(0,-1).join(", ") + " & " + a[a.length-1] : (a[0] || ""); }
+  function whoOf(b){
+    var who = isSingle(b) || (Array.isArray(b.players) && b.players.length) ? betPlayers(b) : null;
+    if(!who){ who = []; legsOf(b).forEach(function(l){ var n = (l.name||"").trim(); if(n && who.indexOf(n) < 0) who.push(n); }); }
+    return andJoin(who);
   }
   function betPlayers(b){ return b && Array.isArray(b.players) && b.players.length ? b.players : MEMBERS; }
   function setWL(id, key, v){ WL[key] = v; Array.prototype.forEach.call($(id).querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-r") === v ? "true" : "false"); }); }
