@@ -518,6 +518,34 @@ details.gm .pbar{margin-top:4px}
 .pchips button{border:1px solid var(--line);background:var(--bg);color:var(--muted);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:800}
 .pchips button[aria-pressed="true"]{background:rgba(232,182,76,.12);border-color:var(--gold);color:var(--gold)}
 .pchips button[aria-pressed="true"]::before{content:"✓ "}
+
+/* Compact header */
+.hero{display:grid;grid-template-columns:76px 1fr auto;align-items:center;gap:12px;padding-top:14px!important;margin-bottom:2px}
+.hero > img{width:76px!important;height:76px!important;max-height:none!important;aspect-ratio:auto!important;border-radius:18px;object-fit:cover;object-position:50% 30%;filter:none!important;box-shadow:0 0 0 2px var(--gold),0 8px 20px rgba(0,0,0,.4)}
+.hero::after{display:none!important}
+.hero-text{display:contents!important}
+.hero h1{font-size:30px!important;margin:0!important}
+.hero h1 span{font-size:10px!important;margin-top:4px!important}
+.hero .sync{align-items:flex-end}
+.hero p{max-width:none!important;white-space:nowrap}
+.board-hint{font-size:12px;color:var(--muted);margin:-4px 2px 6px}
+
+.dline{font-size:11px;color:var(--muted);margin:2px 2px 8px;display:flex;align-items:center;gap:6px}
+.dline::before{content:"●";font-size:9px}
+.dline.ok::before{color:var(--win)} .dline.bad::before{color:var(--loss)} .dline.bad{color:var(--loss)}
+.scorechips{display:flex;gap:6px;flex-wrap:wrap}
+.scorechips span{background:var(--raise);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--muted)}
+.scorechips b{color:var(--ink);font-family:var(--display);font-stretch:80%;font-size:15px}
+.sg{padding:12px 14px!important}
+.sg-h{font-size:21px!important}
+.sg-sub{margin:3px 0 6px!important}
+.sg-note{margin:10px 0 0!important;font-size:11px!important}
+.sg-learn{font-size:11px!important;padding:6px 10px!important;margin-top:10px!important}
+.leg-card{gap:6px!important;padding:8px!important}
+.leg-card select,.leg-card input{padding:8px 10px!important}
+.lgchips button{padding:6px 4px!important}
+.obtns button{padding:6px 4px!important}
+.lc-odds input{width:96px!important}
 </style>
 </head>
 <body>
@@ -552,7 +580,8 @@ details.gm .pbar{margin-top:4px}
   <div id="list" class="hist"></div>
 
   <h2>Leaderboard</h2>
-  <label class="pick-player"><span>Player records</span><select id="playerSel" aria-label="View a player’s record"></select></label>
+  <p class="board-hint">Tap a name to see their record.</p>
+  <select id="playerSel" hidden aria-hidden="true"></select>
   <div id="board" class="board"></div>
 
   <p class="org"><button type="button" id="orgBtn" class="linkbtn">Organiser sign-in</button></p>
@@ -605,7 +634,7 @@ details.gm .pbar{margin-top:4px}
     <label class="pastdate" id="pastDate" hidden><span>Date of the game</span><input type="date" id="fDate"></label>
     <div class="single-form" id="singleForm" hidden>
       <p class="joint" id="jointNote" hidden></p>
-      <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Single odds"></div>
+      <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="2.50" aria-label="Single odds"></div>
       <div class="obtns wl" id="sWL" role="group" aria-label="Result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
     </div>
     <div class="legs-form" id="trebleForm">
@@ -617,7 +646,7 @@ details.gm .pbar{margin-top:4px}
         <div class="obtns wl" id="xWL0" role="group" aria-label="Leg 1 result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
         <div class="obtns" id="ob0" role="group" aria-label="Leg 1 result"></div>
         <select id="r0" class="leg-out" aria-hidden="true" tabindex="-1" hidden></select>
-        <label class="lc-odds"><span>Odds</span><input id="o0" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 1 odds"></label>
+        <label class="lc-odds"><span>Odds</span><input id="o0" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="2.50" aria-label="Leg 1 odds"></label>
       </div>
       <div class="leg-card">
         <div class="lc-head"><span class="lc-n">2</span><select id="n1" class="leg-name" aria-label="Leg 2 picked by"></select></div>
@@ -627,7 +656,7 @@ details.gm .pbar{margin-top:4px}
         <div class="obtns wl" id="xWL1" role="group" aria-label="Leg 2 result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
         <div class="obtns" id="ob1" role="group" aria-label="Leg 2 result"></div>
         <select id="r1" class="leg-out" aria-hidden="true" tabindex="-1" hidden></select>
-        <label class="lc-odds"><span>Odds</span><input id="o1" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 2 odds"></label>
+        <label class="lc-odds"><span>Odds</span><input id="o1" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="2.50" aria-label="Leg 2 odds"></label>
       </div>
       <div class="leg-card">
         <div class="lc-head"><span class="lc-n">3</span><select id="n2" class="leg-name" aria-label="Leg 3 picked by"></select></div>
@@ -637,7 +666,7 @@ details.gm .pbar{margin-top:4px}
         <div class="obtns wl" id="xWL2" role="group" aria-label="Leg 3 result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
         <div class="obtns" id="ob2" role="group" aria-label="Leg 3 result"></div>
         <select id="r2" class="leg-out" aria-hidden="true" tabindex="-1" hidden></select>
-        <label class="lc-odds"><span>Odds</span><input id="o2" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 3 odds"></label>
+        <label class="lc-odds"><span>Odds</span><input id="o2" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="2.50" aria-label="Leg 3 odds"></label>
       </div>
     </div>
     <div class="err" id="fErr" role="alert"></div>
@@ -1240,16 +1269,12 @@ var FBModel = (function(){
   function renderPreds(){
     var body = $("predsBody"); body.textContent = "";
     body.appendChild(predSelector());
-    var src = el("div","dsrc");
-    function chip(label, state, tip){ var c = el("span","dc " + state, label); if(tip) c.title = tip; src.appendChild(c); }
-    var fok = FPL_STATE === "ready" && FPL.status && FPL.status.ok;
-    chip("Team news", fok ? "ok" : FPL_STATE === "ready" ? "bad" : "off", fok ? "" : FPL && FPL.status ? FPL.status.message : "Not set up");
-    chip("Lineups", fok && (!FPL.lineupStatus || FPL.lineupStatus.ok) ? "ok" : fok ? "bad" : "off");
-    var bs = FPL && FPL.b365Status;
-    chip("Bet365", bs && bs.ok ? "ok" : bs && bs.message !== "Not set up" ? "bad" : "off", bs ? (bs.message || (bs.remaining != null ? bs.remaining + " tokens left" : "")) : "Not set up");
-    var os = FPL && FPL.oddsStatus;
-
-    if(fok) src.appendChild(el("span","dt","Updated " + when(Date.parse(FPL.status.checked))));
+    var fok = FPL_STATE === "ready" && FPL.status && FPL.status.ok, bs = FPL && FPL.b365Status;
+    var issues = [];
+    if(!fok) issues.push(FPL && FPL.status ? "team news: " + FPL.status.message : "team news not set up");
+    if(bs && !bs.ok && bs.message !== "Not set up") issues.push("Bet365: " + bs.message);
+    var src = el("div","dline " + (issues.length ? "bad" : "ok"));
+    src.textContent = issues.length ? issues.join(" · ") : "Live data · updated " + when(Date.parse(FPL.status.checked));
     body.appendChild(src);
     if(MODEL_STATE !== "ready"){
       if(MODEL_STATE === "idle") loadHistory();
@@ -1268,7 +1293,7 @@ var FBModel = (function(){
     });
     }
     var n = el("p","pnote");
-    n.appendChild(document.createTextNode("Bet365 % is Bet365’s odds turned into a chance, with their margin removed. Model % is our model’s own view. Bet365 is the more accurate of the two over past seasons, so it leads; the model is shown beside it, and its disagreements are where the model singles come from."));
+    n.appendChild(document.createTextNode("Bet365 % = Bet365’s odds as a chance (margin removed). Model % = our model. Bet365 has been the more accurate over past seasons, so it leads."));
     body.appendChild(n);
   }
   // ---- Gameweek selector and suggested bets ----
@@ -1428,6 +1453,7 @@ var FBModel = (function(){
     r.appendChild(rr);
     return r;
   }
+  function plFix(fid){ var key = null; Object.keys(FPLMAP).some(function(k){ if(FPLMAP[k].id === fid){ key = k; return true; } return false; }); return key ? FIX[key] : null; }
   // ---- Tracked history (shared by the track record and the learning) ----
   // Every finished gameweek is re-predicted with the model as it stood before kick-off and
   // scored at Bet365's last pre-kick-off odds (logged from 7 Nov 2026).
@@ -1512,14 +1538,14 @@ var FBModel = (function(){
     var rules = {champ: ruleRecord("champ"), goals: ruleRecord("goals")};
     var cands = oneEach(candidates(pool, predFor, function(f){ var pp = primary(f); return pp ? pp.o : null; })).filter(function(k){ return !rules[k.rule].paused; });
     var sc = el("div","sg"); sc.appendChild(el("div","sg-h","Model singles"));
-    sc.appendChild(el("p","sg-sub","Bets where the model rates the chance higher than Bet365’s odds. Back each one on its own, same stake each (e.g. £5)."));
-    if(!cands.length) sc.appendChild(el("p","sg-empty","No model singles yet this gameweek. They appear as Bet365 prices the games, usually from midweek."));
+    sc.appendChild(el("p","sg-sub","Where the model rates a bet above Bet365’s odds. Back as singles, same stake each."));
+    if(!cands.length) sc.appendChild(el("p","sg-empty","None yet. Picks appear once Bet365 prices the games."));
     cands.slice(0,8).forEach(function(k){
       var row = betRow(k.label, gameSub(k.f), k.pm, k.p, k.d);
       if(canWrite){ var add = el("button","mini","+ Add"); add.type = "button"; add.addEventListener("click", function(){ useSingle({f:k.f, p:k.pm, label:k.label}); setTimeout(function(){ $("sOdds").value = k.d.toFixed(2); updatePreview(); }, 120); }); row.querySelector(".sg-r").appendChild(add); }
       sc.appendChild(row);
     });
-    sc.appendChild(el("p","sg-note","Past seasons: about 1,150 bets, +3.9% return, profitable in 4 of 5 seasons. Unproven until the live record below confirms it."));
+    sc.appendChild(el("p","sg-note","Past seasons +3.9% · unproven live"));
     ["champ","goals"].forEach(function(r){ if(rules[r].paused) sc.appendChild(el("p","sg-warn", RULES[r].name + " picks are paused: live record " + Math.round(rules[r].roi*100) + "% over " + rules[r].n + " bets.")); });
     body.appendChild(sc);
 
@@ -1527,10 +1553,10 @@ var FBModel = (function(){
     var tw = trebleWeight(), card = el("div","sg");
     card.appendChild(el("div","sg-h","Most likely treble"));
     var legs = favLegs(games);
-    if(legs.length < 3) card.appendChild(el("p","sg-empty", "Waiting for Bet365 odds on more Premier League games."));
+    if(legs.length < 3) card.appendChild(el("p","sg-empty", "Waiting for Bet365 odds."));
     else {
       legs = legs.slice(0,3).sort(function(a,b){ return koSort(a.f).localeCompare(koSort(b.f)); });
-      card.appendChild(el("p","sg-sub","The three likeliest Premier League wins this gameweek. Built for chance of landing, not value."));
+      card.appendChild(el("p","sg-sub","The three likeliest Premier League wins. For chance, not value."));
       legs.forEach(function(k){ card.appendChild(betRow(k.label, gameSub(k.f), k.p, k.pd, k.d)); });
       var p = legs.reduce(function(a,k){ return a * k.p; }, 1), tx = legs.reduce(function(a,k){ return a * k.d; }, 1);
       var tot = el("div","sg-tot three");
@@ -1538,8 +1564,8 @@ var FBModel = (function(){
       card.appendChild(tot);
       if(canWrite){ var bt = el("button","btn primary sg-btn","Add this treble to the tracker"); bt.type = "button"; bt.addEventListener("click", function(){ useTreble(legs); }); card.appendChild(bt); }
     }
-    card.appendChild(el("p","sg-learn", "Learning: picks are ranked " + Math.round((1-tw.w)*100) + "% on Bet365, " + Math.round(tw.w*100) + "% on the model. " + (tw.learned ? "Set from " + tw.n + " tracked games." : "Default until 40 games are tracked (" + tw.n + " so far), then it adjusts each gameweek to whichever has been more accurate.")));
-    card.appendChild(el("p","sg-note","Past seasons: landed 36% of weeks, about −3% return."));
+    card.appendChild(el("p","sg-learn", "Learning · ranked " + Math.round((1-tw.w)*100) + "% Bet365 / " + Math.round(tw.w*100) + "% model" + (tw.learned ? "" : " · adjusts after 40 games (" + tw.n + " so far)")));
+    card.appendChild(el("p","sg-note","Past seasons: landed 36%, about −3%"));
     body.appendChild(card);
     renderTrack(body);
   }
@@ -1557,7 +1583,7 @@ var FBModel = (function(){
     }).filter(Boolean).reverse();
     var singles = [];
     T.weeks.slice().reverse().forEach(function(wk){ wk.picks.forEach(function(p){ singles.push({gw:wk.gw, won:p.won, ret: p.won ? 10*p.d - 10 : -10, txt:p.txt}); }); });
-    if(!trebles.length && !singles.length){ box.appendChild(el("p","sg-sub","Started 7 Nov. Every model single and the treble are scored here at Bet365’s last odds before kick-off, once each gameweek finishes.")); body.appendChild(box); return; }
+    if(!trebles.length && !singles.length){ box.appendChild(el("p","sg-empty","Fills in as each gameweek finishes.")); body.appendChild(box); return; }
     [["Model singles · £10 each", singles],["Most likely treble · £10", trebles]].forEach(function(set){
       var rows = set[1]; if(!rows.length) return;
       var n = rows.length, landed = rows.filter(function(r){ return r.won; }).length, pl = rows.reduce(function(a,r){ return a + r.ret; }, 0);
@@ -1565,7 +1591,7 @@ var FBModel = (function(){
       var tot = el("div","sg-tot three");
       [["Bets",String(n)],["Won",landed + " (" + Math.round(landed/n*100) + "%)"],["Profit",(pl >= 0 ? "+£" : "−£") + Math.abs(pl).toFixed(2)]].forEach(function(x, i){ var c = el("div"); c.appendChild(el("small",null,x[0])); c.appendChild(el("b", i === 2 ? (pl >= 0 ? "pos" : "neg") : null, x[1])); tot.appendChild(c); });
       box.appendChild(tot);
-      rows.slice(0,6).forEach(function(r){ var line = el("div","trk-r"); line.appendChild(el("span","trk-gw","GW" + r.gw)); line.appendChild(el("span","trk-l", r.txt)); line.appendChild(el("b", r.won ? "pos" : "neg", r.won ? "+£" + r.ret.toFixed(2) : "−£10")); box.appendChild(line); });
+      rows.slice(0,4).forEach(function(r){ var line = el("div","trk-r"); line.appendChild(el("span","trk-gw","GW" + r.gw)); line.appendChild(el("span","trk-l", r.txt)); line.appendChild(el("b", r.won ? "pos" : "neg", r.won ? "+£" + r.ret.toFixed(2) : "−£10")); box.appendChild(line); });
     });
     body.appendChild(box);
   }
@@ -1607,7 +1633,7 @@ var FBModel = (function(){
   function useTreble(legs){
     closePredsForSheet();
     openSheet(null, "treble");
-    legs.forEach(function(k, i){ fillFixtures(i, fkey(k.f)); fillOutcomes(i, k.code); $("o"+i).value = ""; var b = b365(k.f), px = b ? exPrice(b, k.code) : null; $("o"+i).placeholder = "e.g. 2.50"; if(b && px){ $("o"+i).value = px.toFixed(2); $("o"+i).dataset.auto = "1"; } });
+    legs.forEach(function(k, i){ fillFixtures(i, fkey(k.f)); fillOutcomes(i, k.code); $("o"+i).value = ""; var b = b365(k.f), px = b ? exPrice(b, k.code) : null; $("o"+i).placeholder = "2.50"; if(b && px){ $("o"+i).value = px.toFixed(2); $("o"+i).dataset.auto = "1"; } });
     updatePreview();
     setTimeout(function(){ $("o0").focus(); }, 80);
   }
@@ -1632,7 +1658,7 @@ var FBModel = (function(){
     var pr = predFor(f), news = teamNews(f), ex = b365(f);
     var d = el("details","gm"), sm = el("summary");
     // collapsed: time, teams, result %, key goals stats
-    var top = el("div","gm-top"); top.appendChild(el("span","gm-t", koTime(f) || "TBC"));
+    var top = el("div","gm-top"); top.appendChild(el("span","gm-t", (koTime(f) || "TBC") + " · " + (pr.src === "b365" ? "Bet365 %" : "Model %")));
     var tags = el("span","gm-tags");
     if(news && news.auto) tags.appendChild(el("span","gt ok", news.auto.verified ? "XIs ✓" : "XIs"));
     if(ex && ex.inplay) tags.appendChild(el("span","gt live","In play"));
@@ -1640,7 +1666,7 @@ var FBModel = (function(){
     tags.appendChild(el("span","gm-chev","▾"));
     top.appendChild(tags); sm.appendChild(top);
     var tm = el("div","gm-teams"); tm.appendChild(el("span",null,f.home)); tm.appendChild(el("span",null,f.away)); sm.appendChild(tm);
-    sm.appendChild(el("div","gm-cap", pr.src === "b365" ? "Win chance · Bet365 %" : "Win chance · Model % (no Bet365 odds yet)"));
+
     var bar = el("div","pbar"), mx = Math.max(pr.home, pr.draw, pr.away);
     [["ph",pr.home,"H"],["pd",pr.draw,"D"],["pa",pr.away,"A"]].forEach(function(s){ var seg = el("span", s[0] + (s[1] === mx ? " fav" : ""), pct(s[1])); seg.style.flex = String(Math.max(0.14, s[1])); bar.appendChild(seg); });
     bar.setAttribute("aria-label", f.home + " " + pct(pr.home) + ", draw " + pct(pr.draw) + ", " + f.away + " " + pct(pr.away));
@@ -1675,26 +1701,27 @@ var FBModel = (function(){
       return row;
     }));
     var key = el("div","mk-n");
-    if(live) key.textContent = "Bet365 % = Bet365’s odds as a chance. Model % = our model. Green: model rates it higher. Red: lower. Odds from Bet365, " + when(Date.parse(bk.at)) + ".";
-    else key.textContent = hasB ? "Kicked off: showing the model’s pre-match view." : "No Bet365 odds yet: showing the model’s view only.";
+    if(live) key.textContent = "Green / red: model rates it higher / lower than Bet365.";
+    else key.textContent = hasB ? "Kicked off." : "No Bet365 odds yet.";
     r.appendChild(key);
     if(hasEx){ var exn = el("div","mk-n"); exn.appendChild(bfxTag()); exn.appendChild(document.createTextNode((ex.inplay ? " in-play prices" : hasB ? " reference price" : " back prices, value after 5% commission") + " · " + when(Date.parse(ex.at)))); r.appendChild(exn); }
     box.appendChild(r);
     // Goals
     var g = mkt("Goals"), gh = live && bk && bk.o25 && bk.u25;
+    var est = function(label, p){ return gh ? [label, pct(p), "—", "—"] : [label, pct(p)]; };
     var grow = function(label, p, model, price){
       var mv = model == null ? null : model, diff = mv == null ? 0 : Math.round(mv*100) - Math.round(p*100);
       var r0 = gh ? [label, price ? pct(p) : "—", mv == null ? "—" : el("span","mdl" + (diff >= 3 ? " up" : diff <= -3 ? " dn" : ""), pct(mv)), price ? price.toFixed(2) : "—"] : [label, pct(mv == null ? p : mv)];
       return r0; };
     mktTable(g, gh ? ["", "Bet365 %", "Model %", "Odds"] : ["", "Model %"], [
-      grow("Over 2.5", pr.over25, pr.model.over25, gh && bk.o25), grow("Under 2.5", 1 - pr.over25, 1 - pr.model.over25, gh && bk.u25)]);
-    var gx = mkt("More goals estimates");
-    mktTable(gx, ["", "Est. %"], [["Over 1.5", pct(pr.over15)],["Over 3.5", pct(pr.over35)],["Both teams score", pct(pr.btts)]]);
-    g.appendChild(el("div","mk-n","Expected goals: " + f.home + " " + pr.xgHome.toFixed(2) + " · " + f.away + " " + pr.xgAway.toFixed(2)));
-    box.appendChild(g); box.appendChild(gx);
+      grow("Over 2.5", pr.over25, pr.model.over25, gh && bk.o25), grow("Under 2.5", 1 - pr.over25, 1 - pr.model.over25, gh && bk.u25),
+      est("Over 1.5", pr.over15), est("Over 3.5", pr.over35), est("Both teams score", pr.btts)]);
+    g.appendChild(el("div","mk-n","Expected goals " + pr.xgHome.toFixed(1) + "–" + pr.xgAway.toFixed(1)));
+    box.appendChild(g);
     // Correct score
-    var c = mkt("Correct score");
-    mktTable(c, ["", "Est. %"], pr.scores.map(function(s){ return [s.s, pct(s.p)]; }));
+    var c = mkt("Likeliest scores"), cs = el("div","scorechips");
+    pr.scores.forEach(function(s){ var x = el("span"); x.appendChild(el("b",null,s.s)); x.appendChild(document.createTextNode(" " + pct(s.p))); cs.appendChild(x); });
+    c.appendChild(cs);
     box.appendChild(c);
     // Team news
     if(news) box.appendChild(newsBlock(f, news));
@@ -1832,7 +1859,7 @@ var FBModel = (function(){
     $("tStaked").textContent = gbp(staked);
     $("tReturned").textContent = gbp(returned);
     $("tRecord").textContent = w + "–" + lcount;
-    $("sub").textContent = STATE.updatedAt ? "Updated " + when(STATE.updatedAt) : "";
+    $("sub").textContent = STATE.updatedAt ? when(STATE.updatedAt) : "";
     fillPlayerSel(rows0());
     $("orgBtn").textContent = canWrite ? "Organiser: signed in. Sign out" : "Organiser sign-in";
 
@@ -1840,7 +1867,7 @@ var FBModel = (function(){
     var open = bets.filter(function(b){ return statusOf(b) === "open"; });
     var done = bets.filter(function(b){ return statusOf(b) !== "open"; });
     if(!loaded){ live.appendChild(el("div","idle","Loading…")); }
-    else if(!open.length){ live.appendChild(el("div","idle", canWrite ? "Nothing live. Tap + Treble or + Single to put a bet on." : "No live bets right now.")); }
+    else if(!open.length){ live.appendChild(el("div","idle", canWrite ? "No live bets." : "No live bets right now.")); }
     open.forEach(function(b){
       var c = el("article","card");
       var h = el("div","card-head"); h.appendChild(el("b",null, isSingle(b) ? "Live single" : "Live treble"));
@@ -1965,8 +1992,9 @@ var FBModel = (function(){
     var ph = document.createElement("option"); ph.value = "";
     ph.textContent = FIX_STATE === "loading" ? "Loading matches…" : FIX_STATE === "failed" ? "Matches unavailable" : "Choose a match"; fs.appendChild(ph);
     var now = Date.now();
-    var games = upcoming().filter(function(f){
-        if(f.lg !== LEG_LG[i]) return false;
+    var horizon = isoDay(new Date(now + 21*864e5));
+    var games = FIX_LIST.filter(function(f){
+        if(f.lg !== LEG_LG[i] || f.ft || f.date > horizon) return false;
         var x = f.lg === "en.1" && FPL && FPLMAP[fkey(f)];
         var ko = x && x.ko ? Date.parse(x.ko) : Date.parse(f.date + "T" + (f.time || "23:59") + ":00"); // feed times are local
         return !(ko <= now); })
@@ -2098,7 +2126,7 @@ var FBModel = (function(){
     WHEN = b && b.createdAt && (b.legs||[]).every(function(l){ var f = l.fixture && fixtureFor(fkey(l.fixture)); return f ? matchTime(f) <= Date.now() : true; }) && (b.legs||[]).some(function(l){ return l.fixture; }) ? "past" : "up";
     ["sWL","xWL0","xWL1","xWL2"].forEach(function(id, k){ setWL(id, k === 0 ? "s" : k - 1, ""); });
     $("fDate").value = b && b.createdAt ? isoDay(new Date(b.createdAt)) : isoDay(new Date());
-    [0,1,2].forEach(function(i){ $("o"+i).placeholder = "e.g. 2.50"; $("o"+i).dataset.auto = ""; LEG_LG[i] = "en.1"; });
+    [0,1,2].forEach(function(i){ $("o"+i).placeholder = "2.50"; $("o"+i).dataset.auto = ""; LEG_LG[i] = "en.1"; });
     mode = b ? (isSingle(b) ? "single" : "treble") : (m || "treble");
     var single = mode === "single";
     $("singleForm").hidden = !single; $("trebleForm").hidden = single;
@@ -2116,7 +2144,7 @@ var FBModel = (function(){
     var prevNames = lastTreble ? legsOf(lastTreble) : [];
     [0,1,2].forEach(function(i){
       var L = legs[i];
-      setPicker(i, L ? L.name : (prevNames[i] ? prevNames[i].name : MEMBERS[i % MEMBERS.length]));
+      setPicker(i, L ? L.name : pickers()[i % pickers().length]);
       var key = L ? (L.fixture ? fkey(L.fixture) : (L.pick ? CUSTOM : "")) : "";
       fillFixtures(i, key);
       $("x"+i).value = L && !L.fixture ? (L.pick||"") : "";
