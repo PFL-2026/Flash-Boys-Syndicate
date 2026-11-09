@@ -6,6 +6,52 @@
  ],
  "bets": [
   {
+   "id": "bmw9769zf8pvq",
+   "createdAt": 1794063600000,
+   "stake": 50,
+   "legs": [
+    {
+     "name": "Cowles",
+     "pick": "West Brom win",
+     "odds": "1.95",
+     "fixture": {
+      "lg": "en.2",
+      "date": "2026-11-07",
+      "home": "West Brom",
+      "away": "Millwall"
+     },
+     "outcome": "H",
+     "result": "open"
+    },
+    {
+     "name": "Jacques",
+     "pick": "Man City win",
+     "odds": "1.75",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Nott’m Forest",
+      "away": "Man City"
+     },
+     "outcome": "A",
+     "result": "open"
+    },
+    {
+     "name": "Des",
+     "pick": "Birmingham win",
+     "odds": "1.80",
+     "fixture": {
+      "lg": "en.2",
+      "date": "2026-11-07",
+      "home": "Birmingham",
+      "away": "Swansea"
+     },
+     "outcome": "H",
+     "result": "open"
+    }
+   ]
+  },
+  {
    "id": "bmvwj5zs97vui",
    "createdAt": 1793458972523,
    "type": "single",
@@ -70,5 +116,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1793483372392
+ "updatedAt": 1794224890636
 }
