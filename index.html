@@ -633,7 +633,7 @@ details.gm .pbar{margin-top:4px}
     <div class="sheet-head"><h3 id="sheetTitle">New treble</h3>
       <label class="stake"><span>£</span><input id="fStake" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Stake" aria-label="Stake in pounds"></label></div>
     <div class="when" role="group" aria-label="When"><button type="button" data-w="up" aria-pressed="true">Upcoming</button><button type="button" data-w="past" aria-pressed="false">Already played</button></div>
-    <div class="whosin"><span>Who’s in</span><div class="pchips" id="pChips" role="group" aria-label="Players in this bet"></div></div>
+    <div class="whosin"><span>Placed by</span><div class="pchips" id="pChips" role="group" aria-label="Players in this bet"></div></div>
     <label class="pastdate" id="pastDate" hidden><span>Date of the game</span><input type="date" id="fDate"></label>
     <div class="single-form" id="singleForm" hidden>
       <p class="joint" id="jointNote" hidden></p>
@@ -1127,10 +1127,12 @@ var FBModel = (function(){
   function legItem(b, l, i){
     var lr = l.result || "open";
     var li = el("li","leg " + lr);
-    var av = el("span","av" + (isSingle(b) ? " joint-av" : ""), isSingle(b) ? "★" : initials(l.name)); if(!isSingle(b)) av.style.background = avColor(l.name);
+    var sp1 = isSingle(b) ? betPlayers(b) : null, solo1 = sp1 && sp1.length === 1;
+    var av = el("span","av" + (sp1 && !solo1 ? " joint-av" : ""), sp1 ? (solo1 ? initials(sp1[0]) : "★") : initials(l.name));
+    if(!sp1 || solo1) av.style.background = avColor(sp1 ? sp1[0] : l.name);
     if(lr !== "open") av.appendChild(el("i",null, lr==="won"?"✓":lr==="lost"?"✕":"–"));
     li.appendChild(av);
-    var lt = el("div","lt"); lt.appendChild(el("small",null,l.name||"Someone")); lt.appendChild(el("span",null,l.pick||""));
+    var lt = el("div","lt"); lt.appendChild(el("small",null, isSingle(b) ? "Placed by " + whoOf(b) : (l.name||"Someone"))); lt.appendChild(el("span",null,l.pick||""));
     var fx = [];
     if(l.fixture) fx.push(l.fixture.home + " v " + l.fixture.away + (l.score ? " " + l.score : " · " + new Date(l.fixture.date + "T12:00:00").toLocaleDateString("en-GB",{weekday:"short"})));
     if(canWrite && l.odds) fx.push(dispOdds(l.odds));
@@ -1887,7 +1889,7 @@ var FBModel = (function(){
       var r = statusOf(b), d = el("details","hrow"), sm = el("summary");
       sm.appendChild(el("span","hdate",shortDate(b.createdAt)));
       var mid = el("span","hmid");
-      mid.appendChild(el("span","hwho", whoOf(b)));
+      mid.appendChild(el("span","hwho", "Placed by " + whoOf(b)));
       if(isSingle(b)){
         var sp = el("span","spill " + r); sp.appendChild(el("i",null,"Single")); sp.appendChild(el("span",null,(legsOf(b)[0]||{}).pick||"")); mid.appendChild(sp);
       } else {
@@ -2176,6 +2178,12 @@ var FBModel = (function(){
       d.addEventListener("click",function(){ removeBet(b.id); });
       $("cancelBtn").parentNode.insertBefore(d,$("cancelBtn"));
     }
+    // editing a settled bet: open on "Already played" with its result selected
+    if(b && statusOf(b) !== "open"){
+      WHEN = "past";
+      if(single){ var r0 = ((b.legs||[])[0]||{}).result; if(r0 === "won" || r0 === "lost") setWL("sWL","s", r0); }
+      else (b.legs||[]).forEach(function(l, i){ if(!l.fixture && (l.result === "won" || l.result === "lost")) setWL("xWL"+i, i, l.result); });
+    }
     setWhen(WHEN, true);
     updatePreview();
     $("sheetRoot").classList.add("open");
@@ -2295,12 +2303,12 @@ var FBModel = (function(){
       if(!sp) return showError("Type the bet.");
       if(!toDecimal(so)) return showError("Check the odds. Use decimal odds, e.g. 2.50.");
       if(WHEN === "past" && !WL.s) return showError("Tap Won or Lost.");
-      if(!PSEL.length) return showError("Choose who’s in this bet.");
+      if(!PSEL.length) return showError("Choose who placed this bet.");
       showError("");
       var sold = editingId ? bets.filter(function(b){ return b.id===editingId; })[0] : null;
       var prevLeg = sold && (sold.legs||[])[0];
       var sres = WHEN === "past" ? WL.s : (prevLeg && prevLeg.pick===sp ? (prevLeg.result||"open") : "open");
-      var sfields = {type:"single", stake:Math.round(stake*100)/100, legs:[{name:JOINT, joint:true, pick:sp.slice(0,100), odds:so.slice(0,10), fixture:null, outcome:null, result: sres}]};
+      var sfields = {type:"single", stake:Math.round(stake*100)/100, legs:[{name:andJoin(PSEL), joint:PSEL.length === MEMBERS.length, pick:sp.slice(0,100), odds:so.slice(0,10), fixture:null, outcome:null, result: sres}]};
       if(WHEN === "past" && $("fDate").value) sfields.createdAt = Date.parse($("fDate").value + "T12:00:00");
       sfields.players = PSEL.slice();
       var snext = editingId ? bets.map(function(b){ return b.id===editingId ? Object.assign({}, b, sfields) : b; })
@@ -2325,7 +2333,7 @@ var FBModel = (function(){
       return {name:l.name.slice(0,40), pick:l.pick.slice(0,80), odds:l.odds.slice(0,10), fixture:l.fixture, outcome:l.outcome || null,
         result: l.custom && WHEN === "past" ? WL[i] : (prev && prev.pick===l.pick && !prev.auto ? (prev.result||"open") : "open")};
     });
-    if(!PSEL.length) return showError("Choose who’s in this bet.");
+    if(!PSEL.length) return showError("Choose who placed this bet.");
     var fields = {players: PSEL.slice(), stake:Math.round(stake*100)/100, legs:cleanLegs};
     var next;
     if(editingId){
