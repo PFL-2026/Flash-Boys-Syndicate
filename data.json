@@ -6,6 +6,55 @@
  ],
  "bets": [
   {
+   "id": "bmw97n8vc88w2",
+   "createdAt": 1794146400000,
+   "players": [
+    "Jacques"
+   ],
+   "stake": 5,
+   "legs": [
+    {
+     "name": "Jacques",
+     "pick": "Man Utd win",
+     "odds": "2.10",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Man Utd",
+      "away": "Aston Villa"
+     },
+     "outcome": "H",
+     "result": "open"
+    },
+    {
+     "name": "Jacques",
+     "pick": "Brighton win",
+     "odds": "1.85",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Brighton",
+      "away": "Brentford"
+     },
+     "outcome": "H",
+     "result": "open"
+    },
+    {
+     "name": "Jacques",
+     "pick": "Draw",
+     "odds": "4.33",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Crystal Palace",
+      "away": "Liverpool"
+     },
+     "outcome": "D",
+     "result": "open"
+    }
+   ]
+  },
+  {
    "id": "bmw97kutya966",
    "createdAt": 1794146400000,
    "players": [
@@ -165,5 +214,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1794225570839
+ "updatedAt": 1794225682345
 }
