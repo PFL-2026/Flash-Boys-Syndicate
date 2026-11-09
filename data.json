@@ -6,6 +6,55 @@
  ],
  "bets": [
   {
+   "id": "bmw97kutya966",
+   "createdAt": 1794146400000,
+   "players": [
+    "Des"
+   ],
+   "stake": 10,
+   "legs": [
+    {
+     "name": "Des",
+     "pick": "Draw",
+     "odds": "3.80",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Brighton",
+      "away": "Brentford"
+     },
+     "outcome": "D",
+     "result": "open"
+    },
+    {
+     "name": "Des",
+     "pick": "Draw",
+     "odds": "3.70",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Ipswich",
+      "away": "Bournemouth"
+     },
+     "outcome": "D",
+     "result": "open"
+    },
+    {
+     "name": "Des",
+     "pick": "Chelsea win",
+     "odds": "1.95",
+     "fixture": {
+      "lg": "en.1",
+      "date": "2026-11-07",
+      "home": "Sunderland",
+      "away": "Chelsea"
+     },
+     "outcome": "A",
+     "result": "open"
+    }
+   ]
+  },
+  {
    "id": "bmw9769zf8pvq",
    "createdAt": 1794063600000,
    "stake": 50,
@@ -116,5 +165,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1794224890636
+ "updatedAt": 1794225570839
 }
