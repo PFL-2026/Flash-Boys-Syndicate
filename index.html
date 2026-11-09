@@ -492,6 +492,25 @@ details.gm .pbar{margin-top:4px}
 .sg-r .mini{margin-top:6px;border:1px solid var(--gold);background:transparent;color:var(--gold);border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800}
 .sg-empty{font-size:13px;color:var(--muted);margin:6px 0 10px}
 .sg-learn{font-size:12px;color:var(--gold-hi);background:rgba(232,182,76,.08);border-radius:8px;padding:8px 10px;margin:12px 0 0;line-height:1.45}
+
+.toast{position:fixed;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);z-index:60;background:var(--win);color:#0A0A0B;font-weight:800;font-size:14px;padding:10px 18px;border-radius:999px;box-shadow:0 10px 26px rgba(0,0,0,.45);opacity:0;pointer-events:none;transition:opacity .2s, transform .2s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.sheet{max-height:calc(100vh - 70px - env(safe-area-inset-top,0px))!important}
+
+.when{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:11px;padding:3px;margin:0 0 10px}
+.when button{border:0;background:transparent;border-radius:8px;padding:9px;font-size:13px;font-weight:800;color:var(--muted)}
+.when button[aria-pressed="true"]{background:var(--raise);color:var(--ink);box-shadow:inset 0 0 0 1px var(--gold)}
+.pastdate{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 10px;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.pastdate[hidden]{display:none}
+.pastdate input{background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:8px 10px;font-size:15px;color:var(--ink);color-scheme:dark}
+.obtns.wl{grid-template-columns:1fr 1fr!important}
+.obtns.wl button[data-r="won"][aria-pressed="true"]{background:var(--win);color:#0A0A0B}
+.obtns.wl button[data-r="lost"][aria-pressed="true"]{background:var(--loss);color:#0A0A0B}
+.single-form .obtns.wl{margin-top:8px}
+
+.pmoney{grid-template-columns:repeat(3,1fr)!important;margin-top:8px}
+.pmoney b{font-size:22px!important}
+.pnote2{font-size:11px;color:var(--muted);margin:6px 2px 0}
 </style>
 </head>
 <body>
@@ -532,6 +551,7 @@ details.gm .pbar{margin-top:4px}
   <p class="org"><button type="button" id="orgBtn" class="linkbtn">Organiser sign-in</button></p>
 </div>
 
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="fabs" id="fab"><button class="fab-btn" id="fabTreble" type="button">+ Treble</button><button class="fab-btn alt" id="fabSingle" type="button">+ Single</button></div>
 
 <div id="preds" class="profile" role="dialog" aria-modal="true" aria-labelledby="predsTitle" hidden>
@@ -573,9 +593,12 @@ details.gm .pbar{margin-top:4px}
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <div class="sheet-head"><h3 id="sheetTitle">New treble</h3>
       <label class="stake"><span>£</span><input id="fStake" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="Stake" aria-label="Stake in pounds"></label></div>
+    <div class="when" role="group" aria-label="When"><button type="button" data-w="up" aria-pressed="true">Upcoming</button><button type="button" data-w="past" aria-pressed="false">Already played</button></div>
+    <label class="pastdate" id="pastDate" hidden><span>Date of the game</span><input type="date" id="fDate"></label>
     <div class="single-form" id="singleForm" hidden>
       <p class="joint" id="jointNote"></p>
       <div class="leg-card single-card"><input id="sPick" class="leg-custom" autocomplete="off" maxlength="100" placeholder="The bet, e.g. Haaland anytime scorer" aria-label="Single bet"><input id="sOdds" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Single odds"></div>
+      <div class="obtns wl" id="sWL" role="group" aria-label="Result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
     </div>
     <div class="legs-form" id="trebleForm">
       <div class="leg-card">
@@ -583,6 +606,7 @@ details.gm .pbar{margin-top:4px}
         <div class="lgchips" id="lg0" role="group" aria-label="Leg 1 league"><button type="button" data-lg="en.1">Prem</button><button type="button" data-lg="en.2">Champ</button><button type="button" data-lg="de.1">Bundesliga</button><button type="button" data-lg="other">Other</button></div>
         <select id="f0" class="leg-fix" aria-label="Leg 1 match"></select>
         <input id="x0" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet, e.g. Kane to score" aria-label="Leg 1 bet" hidden>
+        <div class="obtns wl" id="xWL0" role="group" aria-label="Leg 1 result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
         <div class="obtns" id="ob0" role="group" aria-label="Leg 1 result"></div>
         <select id="r0" class="leg-out" aria-hidden="true" tabindex="-1" hidden></select>
         <label class="lc-odds"><span>Odds</span><input id="o0" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 1 odds"></label>
@@ -592,6 +616,7 @@ details.gm .pbar{margin-top:4px}
         <div class="lgchips" id="lg1" role="group" aria-label="Leg 2 league"><button type="button" data-lg="en.1">Prem</button><button type="button" data-lg="en.2">Champ</button><button type="button" data-lg="de.1">Bundesliga</button><button type="button" data-lg="other">Other</button></div>
         <select id="f1" class="leg-fix" aria-label="Leg 2 match"></select>
         <input id="x1" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet, e.g. Kane to score" aria-label="Leg 2 bet" hidden>
+        <div class="obtns wl" id="xWL1" role="group" aria-label="Leg 2 result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
         <div class="obtns" id="ob1" role="group" aria-label="Leg 2 result"></div>
         <select id="r1" class="leg-out" aria-hidden="true" tabindex="-1" hidden></select>
         <label class="lc-odds"><span>Odds</span><input id="o1" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 2 odds"></label>
@@ -601,17 +626,17 @@ details.gm .pbar{margin-top:4px}
         <div class="lgchips" id="lg2" role="group" aria-label="Leg 3 league"><button type="button" data-lg="en.1">Prem</button><button type="button" data-lg="en.2">Champ</button><button type="button" data-lg="de.1">Bundesliga</button><button type="button" data-lg="other">Other</button></div>
         <select id="f2" class="leg-fix" aria-label="Leg 3 match"></select>
         <input id="x2" class="leg-custom" autocomplete="off" maxlength="80" placeholder="Type the bet, e.g. Kane to score" aria-label="Leg 3 bet" hidden>
+        <div class="obtns wl" id="xWL2" role="group" aria-label="Leg 3 result" hidden><button type="button" data-r="won">✓ Won</button><button type="button" data-r="lost">✕ Lost</button></div>
         <div class="obtns" id="ob2" role="group" aria-label="Leg 3 result"></div>
         <select id="r2" class="leg-out" aria-hidden="true" tabindex="-1" hidden></select>
         <label class="lc-odds"><span>Odds</span><input id="o2" class="leg-odds" autocomplete="off" inputmode="decimal" maxlength="10" placeholder="e.g. 2.50" aria-label="Leg 3 odds"></label>
       </div>
     </div>
-    </div>
     <div class="err" id="fErr" role="alert"></div>
     <div class="preview" id="preview"></div>
     <div class="sheet-btns">
       <button class="btn secondary" id="cancelBtn" type="button">Cancel</button>
-      <button class="btn primary" id="saveBtn" type="button">Add treble</button>
+      <button class="btn primary" id="saveBtn" type="button">Confirm bet</button>
     </div>
   </div>
 </div>
@@ -924,9 +949,10 @@ var FBModel = (function(){
   function b365(f){
     if(!f || !FPL) return null;
     var o = null, ko = null;
-    if(f.lg === "en.1"){ var x = FPLMAP[fkey(f)]; if(x && FPL.b365 && FPL.b365[x.id]){ o = FPL.b365[x.id]; ko = x.ko; } }
-    else if(f.lg === "en.2" && FPL.b365x){
-      o = FPL.b365x.filter(function(r){ var t = Date.parse(r.ko); return [isoDay(new Date(t)), isoDay(new Date(t - 864e5)), isoDay(new Date(t + 864e5))].indexOf(f.date) >= 0 && teamMatch(r.home, f.home) && teamMatch(r.away, f.away); })[0] || null;
+    if(f.lg === "en.1"){ var x = FPLMAP[fkey(f)]; if(x){ o = (FPL.b365 && FPL.b365[x.id]) || (FPL.closing && FPL.closing[x.id]) || null; ko = x.ko; } }
+    else if(f.lg === "en.2" && (FPL.b365x || FPL.closingx)){
+      var pool2 = (FPL.b365x || []).concat(Object.keys(FPL.closingx || {}).map(function(k){ return FPL.closingx[k]; }));
+      o = pool2.filter(function(r){ var t = Date.parse(r.ko); return [isoDay(new Date(t)), isoDay(new Date(t - 864e5)), isoDay(new Date(t + 864e5))].indexOf(f.date) >= 0 && teamMatch(r.home, f.home) && teamMatch(r.away, f.away); })[0] || null;
       if(o) ko = o.ko;
     }
     if(o) o.inplay = ko ? Date.parse(o.at) >= Date.parse(ko) : false;
@@ -1161,6 +1187,18 @@ var FBModel = (function(){
     var st = el("div","pstats");
     [["Picks",picks.length],["Landed",won],["Lost",lost],["Hit rate",rate]].forEach(function(s,i){ var d=el("div"); d.appendChild(el("small",null,s[0])); d.appendChild(el("b", i===1&&won?"pos":i===2&&lost?"neg":null, String(s[1]))); st.appendChild(d); });
     body.appendChild(st);
+    // money: every syndicate bet is shared equally between members
+    var share = 1 / Math.max(1, MEMBERS.length), mStake = 0, mRet = 0, mOpen = 0;
+    bets.forEach(function(b){
+      var s = (Number(b.stake) || 0) * share, r = statusOf(b);
+      mStake += s;
+      if(r === "open") mOpen += s; else mRet += payoutOf(b) * share;
+    });
+    var mPl = mRet - (mStake - mOpen);
+    var money = el("div","pstats pmoney");
+    [["Staked", gbp(mStake)],["Returned", gbp(mRet)],["Profit", signed(mPl)]].forEach(function(s, i){ var d = el("div"); d.appendChild(el("small",null,s[0])); d.appendChild(el("b", i === 2 ? (mPl > 0 ? "pos" : mPl < 0 ? "neg" : null) : null, s[1])); money.appendChild(d); });
+    body.appendChild(money);
+    body.appendChild(el("p","pnote2", "Their " + Math.round(share*100) + "% share of every syndicate bet (stakes and returns split equally between " + MEMBERS.length + " members)" + (mOpen ? ". " + gbp(mOpen) + " still riding on live bets." : ".")));
     var ex = el("div","pextra");
     var fw = el("span",null,"Form"); var form = el("span","form");
     var settled = picks.filter(function(x){ return x.l.result==="won" || x.l.result==="lost"; }).slice(0,5);
@@ -1566,7 +1604,7 @@ var FBModel = (function(){
     updatePreview();
     setTimeout(function(){ $("sOdds").focus(); }, 80);
   }
-  function closePredsForSheet(){ if(currentPage === "predictions") closePreds(); }
+  function closePredsForSheet(){ if(currentPage === "predictions"){ pushedPreds = false; history.replaceState(null, "", location.pathname + location.search); route(); } }
   function valueLine(p, dec){
     var edge = p * dec - 1, d = el("div","vchk " + (edge > 0 ? "pos" : "neg"));
     d.appendChild(document.createTextNode("Model chance " + pct(p) + " (fair " + fairOdds(p) + ") · "));
@@ -1856,9 +1894,27 @@ var FBModel = (function(){
     });
   });
 
-  var CUSTOM = "__custom__", LEG_LG = ["en.1","en.1","en.1"];
+  var CUSTOM = "__custom__", LEG_LG = ["en.1","en.1","en.1"], WHEN = "up", WL = {s:"", 0:"", 1:"", 2:""};
+  function setWL(id, key, v){ WL[key] = v; Array.prototype.forEach.call($(id).querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-r") === v ? "true" : "false"); }); }
+  function showWL(){
+    var past = WHEN === "past";
+    $("sWL").hidden = !past;
+    [0,1,2].forEach(function(i){ $("xWL"+i).hidden = !(past && LEG_LG[i] === "other"); });
+    var needsDate = past && (mode === "single" || LEG_LG.indexOf("other") >= 0) ;
+    $("pastDate").hidden = !needsDate;
+  }
+  function setWhen(w, keep){
+    WHEN = w;
+    Array.prototype.forEach.call(document.querySelectorAll(".when button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-w") === w ? "true" : "false"); });
+    if(!keep) [0,1,2].forEach(function(i){ if(LEG_LG[i] !== "other"){ fillFixtures(i, ""); fillOutcomes(i, ""); } });
+    if(!$("fDate").value) $("fDate").value = isoDay(new Date());
+    showWL(); updatePreview();
+  }
   function setChips(i){ Array.prototype.forEach.call($("lg"+i).querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-lg") === LEG_LG[i] ? "true" : "false"); }); }
-  function matchLabel(f){ var t = f.lg === "en.1" ? koTime(f) : (f.time || ""); return f.home + " v " + f.away + (t ? "  ·  " + t : ""); }
+  function matchTime(f){ var x = f.lg === "en.1" && FPL && FPLMAP[fkey(f)]; return x && x.ko ? Date.parse(x.ko) : Date.parse(f.date + "T" + (f.time || "15:00") + ":00"); }
+  function matchLabel(f){
+    if(f.ft) return f.home + " " + f.ft[0] + "–" + f.ft[1] + " " + f.away;
+    var t = f.lg === "en.1" ? koTime(f) : (f.time || ""); return f.home + " v " + f.away + (t ? "  ·  " + t : ""); }
   function fillFixtures(i, sel){
     if(sel === CUSTOM) LEG_LG[i] = "other";
     else if(sel) LEG_LG[i] = sel.split("|")[0];
@@ -1876,14 +1932,20 @@ var FBModel = (function(){
         var ko = x && x.ko ? Date.parse(x.ko) : Date.parse(f.date + "T" + (f.time || "23:59") + ":00"); // feed times are local
         return !(ko <= now); })
       .sort(function(a,b){ return koSort(a).localeCompare(koSort(b)); });
-    if(sel && sel !== CUSTOM && !games.some(function(f){ return fkey(f) === sel; })){ var f0 = fixtureFor(sel); if(f0) games.unshift(f0); }
+    var from = isoDay(new Date(now - 14*864e5));
+    showWL();
+    var past = FIX_LIST.filter(function(f){ return f.lg === LEG_LG[i] && f.date >= from && matchTime(f) <= now; })
+      .sort(function(a,b){ return matchTime(b) - matchTime(a); });
+    var keys = {}; games.concat(past).forEach(function(f){ keys[fkey(f)] = 1; });
+    if(sel && sel !== CUSTOM && !keys[sel]){ var f0 = fixtureFor(sel); if(f0) (matchTime(f0) <= now ? past : games).unshift(f0); }
     var lastDay = null, g = null;
-    games.forEach(function(f){
+    function add(f, prefix){
       var d = f.lg === "en.1" ? koDate(f) : f.date;
-      if(d !== lastDay){ lastDay = d; g = document.createElement("optgroup"); g.label = new Date(d + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"short"}); fs.appendChild(g); }
+      if(prefix + d !== lastDay){ lastDay = prefix + d; g = document.createElement("optgroup"); g.label = prefix + new Date(d + "T12:00:00").toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"short"}); fs.appendChild(g); }
       var o = document.createElement("option"); o.value = fkey(f); o.textContent = matchLabel(f); g.appendChild(o);
-    });
-    if(!games.length) ph.textContent = "No upcoming matches";
+    }
+    if(WHEN === "past"){ past.forEach(function(f){ add(f, ""); }); if(!past.length) ph.textContent = "No matches in the last 14 days"; else ph.textContent = "Choose a played match"; }
+    else { games.forEach(function(f){ add(f, ""); }); if(!games.length) ph.textContent = "No upcoming matches"; }
     fs.value = sel || "";
   }
   function fixtureFor(key){
@@ -1917,9 +1979,12 @@ var FBModel = (function(){
     if(px && (!o.value || o.dataset.auto === "1")){ o.value = px.toFixed(2); o.dataset.auto = "1"; }
     updatePreview();
   }
+  Array.prototype.forEach.call(document.querySelectorAll(".when button"), function(b){ b.addEventListener("click", function(){ setWhen(b.getAttribute("data-w")); }); });
+  Array.prototype.forEach.call($("sWL").querySelectorAll("button"), function(b){ b.addEventListener("click", function(){ setWL("sWL","s", b.getAttribute("data-r")); }); });
+  [0,1,2].forEach(function(i){ Array.prototype.forEach.call($("xWL"+i).querySelectorAll("button"), function(b){ b.addEventListener("click", function(){ setWL("xWL"+i, i, b.getAttribute("data-r")); }); }); });
   [0,1,2].forEach(function(i){
     Array.prototype.forEach.call($("lg"+i).querySelectorAll("button"), function(b){
-      b.addEventListener("click", function(){ LEG_LG[i] = b.getAttribute("data-lg"); fillFixtures(i, LEG_LG[i] === "other" ? CUSTOM : ""); fillOutcomes(i, ""); updatePreview(); if(LEG_LG[i] === "other") $("x"+i).focus(); });
+      b.addEventListener("click", function(){ LEG_LG[i] = b.getAttribute("data-lg"); fillFixtures(i, LEG_LG[i] === "other" ? CUSTOM : ""); fillOutcomes(i, ""); showWL(); updatePreview(); if(LEG_LG[i] === "other") $("x"+i).focus(); });
     });
     $("f"+i).addEventListener("change", function(){ fillOutcomes(i, ""); updatePreview(); });
     $("o"+i).addEventListener("input", function(){ this.dataset.auto = ""; });
@@ -1983,9 +2048,12 @@ var FBModel = (function(){
     });
   });
   var mode = "treble";
-  function addLabel(){ return mode === "single" ? "Add single" : "Add treble"; }
+  function addLabel(){ return "Confirm bet"; }
   function openSheet(b, m){
     editingId = b ? b.id : null; SINGLE_P = null;
+    WHEN = b && b.createdAt && (b.legs||[]).every(function(l){ var f = l.fixture && fixtureFor(fkey(l.fixture)); return f ? matchTime(f) <= Date.now() : true; }) && (b.legs||[]).some(function(l){ return l.fixture; }) ? "past" : "up";
+    ["sWL","xWL0","xWL1","xWL2"].forEach(function(id, k){ setWL(id, k === 0 ? "s" : k - 1, ""); });
+    $("fDate").value = b && b.createdAt ? isoDay(new Date(b.createdAt)) : isoDay(new Date());
     [0,1,2].forEach(function(i){ $("o"+i).placeholder = "e.g. 2.50"; $("o"+i).dataset.auto = ""; LEG_LG[i] = "en.1"; });
     mode = b ? (isSingle(b) ? "single" : "treble") : (m || "treble");
     var single = mode === "single";
@@ -2018,11 +2086,24 @@ var FBModel = (function(){
       d.addEventListener("click",function(){ removeBet(b.id); });
       $("cancelBtn").parentNode.insertBefore(d,$("cancelBtn"));
     }
+    setWhen(WHEN, true);
     updatePreview();
     $("sheetRoot").classList.add("open");
     setTimeout(function(){ ($("fStake").value ? (single ? $("sPick") : $("f0")) : $("fStake")).focus(); }, 60);
   }
   function closeSheet(){ $("sheetRoot").classList.remove("open"); editingId = null; }
+  var toastT = null;
+  function toast(msg){ var t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove("show"); }, 2600); }
+  function goHome(){
+    if(currentPlayer){ history.replaceState(null, "", location.pathname + location.search); route(); }
+    if(currentPage === "predictions"){ pushedPreds = false; history.replaceState(null, "", location.pathname + location.search); route(); }
+    var target = $("live"); if(target) window.scrollTo({top: Math.max(0, target.getBoundingClientRect().top + window.scrollY - 80), behavior:"smooth"});
+  }
+  // after a successful save from the bet form: close it, go to the main page, confirm
+  async function commitAndGoHome(next, msg){
+    await commit(next, true);
+    if(!$("sheetRoot").classList.contains("open")){ goHome(); toast(msg); }
+  }
   $("fabTreble").addEventListener("click",function(){ openSheet(null, "treble"); });
   $("fabSingle").addEventListener("click",function(){ openSheet(null, "single"); });
   $("cancelBtn").addEventListener("click",closeSheet);
@@ -2123,13 +2204,16 @@ var FBModel = (function(){
       if(!(stake>0)) return showError("Add the stake in pounds.");
       if(!sp) return showError("Type the bet.");
       if(!toDecimal(so)) return showError("Check the odds. Use decimal odds, e.g. 2.50.");
+      if(WHEN === "past" && !WL.s) return showError("Tap Won or Lost.");
       showError("");
       var sold = editingId ? bets.filter(function(b){ return b.id===editingId; })[0] : null;
       var prevLeg = sold && (sold.legs||[])[0];
-      var sfields = {type:"single", stake:Math.round(stake*100)/100, legs:[{name:JOINT, joint:true, pick:sp.slice(0,100), odds:so.slice(0,10), fixture:null, outcome:null, result: prevLeg && prevLeg.pick===sp ? (prevLeg.result||"open") : "open"}]};
+      var sres = WHEN === "past" ? WL.s : (prevLeg && prevLeg.pick===sp ? (prevLeg.result||"open") : "open");
+      var sfields = {type:"single", stake:Math.round(stake*100)/100, legs:[{name:JOINT, joint:true, pick:sp.slice(0,100), odds:so.slice(0,10), fixture:null, outcome:null, result: sres}]};
+      if(WHEN === "past" && $("fDate").value) sfields.createdAt = Date.parse($("fDate").value + "T12:00:00");
       var snext = editingId ? bets.map(function(b){ return b.id===editingId ? Object.assign({}, b, sfields) : b; })
         : [Object.assign({id:"b" + Date.now().toString(36) + Math.random().toString(36).slice(2,6), createdAt:Date.now()}, sfields)].concat(bets);
-      commit(snext, true);
+      commitAndGoHome(snext, editingId ? "Bet updated ✓" : "Single added ✓");
       return;
     }
     var legs=formLegs();
@@ -2138,6 +2222,7 @@ var FBModel = (function(){
       if(!legs[i].name || legs[i].name===NEW) return showError("Add who’s picking leg " + (i+1) + ".");
       if(!legs[i].key) return showError("Choose a fixture for leg " + (i+1) + ".");
       if(legs[i].custom && !legs[i].pick) return showError("Type the bet for leg " + (i+1) + ".");
+      if(legs[i].custom && WHEN === "past" && !WL[i]) return showError("Tap Won or Lost for leg " + (i+1) + ".");
       if(!legs[i].custom && !legs[i].outcome) return showError("Choose the result for leg " + (i+1) + ".");
       if(!toDecimal(legs[i].odds)) return showError("Check the odds for leg " + (i+1) + ". Use decimal odds, e.g. 2.50.");
     }
@@ -2146,7 +2231,7 @@ var FBModel = (function(){
     var cleanLegs = legs.map(function(l,i){
       var prev = old && legsOf(old)[i];
       return {name:l.name.slice(0,40), pick:l.pick.slice(0,80), odds:l.odds.slice(0,10), fixture:l.fixture, outcome:l.outcome || null,
-        result: prev && prev.pick===l.pick && !prev.auto ? (prev.result||"open") : "open"};
+        result: l.custom && WHEN === "past" ? WL[i] : (prev && prev.pick===l.pick && !prev.auto ? (prev.result||"open") : "open")};
     });
     var fields = {stake:Math.round(stake*100)/100, legs:cleanLegs};
     var next;
@@ -2154,9 +2239,12 @@ var FBModel = (function(){
       next = bets.map(function(b){ return b.id===editingId ? Object.assign({}, b, fields) : b; });
     } else {
       var id = "b" + Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-      next = [Object.assign({id:id,createdAt:Date.now()}, fields)].concat(bets);
+      // bets on matches already played are dated to the first match, so history stays in order
+      var kos = legs.map(function(l){ var f = l.fixture && fixtureFor(fkey(l.fixture)); return f ? matchTime(f) : null; }).filter(function(t){ return t && t < Date.now(); });
+      var created = kos.length ? Math.min.apply(null, kos) : (WHEN === "past" && $("fDate").value ? Date.parse($("fDate").value + "T12:00:00") : Date.now());
+      next = [Object.assign({id:id,createdAt:created}, fields)].concat(bets);
     }
-    commit(next, true);
+    commitAndGoHome(next, editingId ? "Bet updated ✓" : "Treble added ✓");
   }
   function setLeg(id, idx, result){
     commit(bets.map(function(b){
