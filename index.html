@@ -1180,9 +1180,13 @@ var FBModel = (function(){
     var names = rows0(), idx = names.indexOf(name);
     $("profName").textContent = name;
     $("profPrev").disabled = names.length < 2; $("profNext").disabled = names.length < 2;
-    var picks = [];
-    bets.forEach(function(b){ if(isSingle(b)) return; legsOf(b).forEach(function(l){ if((l.name||"").trim().toLowerCase() === name.toLowerCase()) picks.push({b:b, l:l}); }); });
-    picks.sort(function(a,c){ return (c.b.createdAt||0) - (a.b.createdAt||0); });
+    var parts = personParts(name);
+    // keep the old shape used below: one entry per bet, with a combined "leg"
+    var picks = parts.map(function(x){
+      var l = x.legs.length === 1 ? Object.assign({}, x.legs[0], {result:x.r}) :
+        {pick:(x.solo ? "Treble: " : x.legs.length === 2 ? "Double: " : "") + x.legs.map(function(k){ return k.pick; }).join(", "), odds:x.odds.toFixed(2), result:x.r, multi:x.legs};
+      return {b:x.b, l:l};
+    });
     var won = picks.filter(function(x){ return x.l.result==="won"; }).length;
     var lost = picks.filter(function(x){ return x.l.result==="lost"; }).length;
     var rate = won + lost ? Math.round(won/(won+lost)*100) + "%" : "—";
@@ -1190,10 +1194,10 @@ var FBModel = (function(){
     var body = $("profBody"); body.textContent = "";
     var head = el("div","prof-head");
     var av = el("span","av",initials(name)); av.style.background = avColor(name); head.appendChild(av);
-    var hw = el("div"); hw.appendChild(el("h3",null,name)); hw.appendChild(el("p",null, picks.length ? picks.length + (picks.length===1?" pick":" picks") + " for the syndicate" : "No picks yet")); head.appendChild(hw);
+    var hw = el("div"); hw.appendChild(el("h3",null,name)); hw.appendChild(el("p",null, picks.length ? picks.length + (picks.length===1?" bet":" bets") + " picked for the syndicate" : "No picks yet")); head.appendChild(hw);
     body.appendChild(head);
     var st = el("div","pstats");
-    [["Picks",picks.length],["Landed",won],["Lost",lost],["Hit rate",rate]].forEach(function(s,i){ var d=el("div"); d.appendChild(el("small",null,s[0])); d.appendChild(el("b", i===1&&won?"pos":i===2&&lost?"neg":null, String(s[1]))); st.appendChild(d); });
+    [["Bets",picks.length],["Landed",won],["Lost",lost],["Hit rate",rate]].forEach(function(s,i){ var d=el("div"); d.appendChild(el("small",null,s[0])); d.appendChild(el("b", i===1&&won?"pos":i===2&&lost?"neg":null, String(s[1]))); st.appendChild(d); });
     body.appendChild(st);
     // money: every syndicate bet is shared equally between members
     var mStake = 0, mRet = 0, mOpen = 0, inCount = 0;
@@ -1225,6 +1229,7 @@ var FBModel = (function(){
       var l = x.l, r = l.result || "open", li = el("li","pick");
       li.appendChild(el("span","pd",shortDate(x.b.createdAt)));
       var mid = el("span","pp",l.pick||""); if(l.fixture) mid.appendChild(el("span","pf",l.fixture.home + " v " + l.fixture.away + (l.score ? " · " + l.score : "")));
+      if(l.multi) mid.appendChild(el("span","pf", l.multi.map(function(k){ return k.fixture ? k.fixture.home + " v " + k.fixture.away : k.pick; }).join(" · ")));
       li.appendChild(mid);
       var right = el("span","pr"); right.appendChild(el("b",null,dispOdds(l.odds))); right.appendChild(el("span","chip " + r, r==="won"?"Landed":r==="lost"?"Lost":r==="void"?"Void":"Waiting"));
       li.appendChild(right);
@@ -1866,12 +1871,10 @@ var FBModel = (function(){
     });
 
     var people = {};
-    MEMBERS.forEach(function(m){ people[m.toLowerCase()] = {name:m,picks:0,won:0,lost:0}; });
-    bets.forEach(function(b){ if(isSingle(b)) return; legsOf(b).forEach(function(l){
-      var key=(l.name||"Someone").trim(), k=key.toLowerCase();
-      var p = people[k] || (people[k] = {name:key,picks:0,won:0,lost:0});
-      p.picks++; if(l.result==="won") p.won++; if(l.result==="lost") p.lost++;
-    }); });
+    rows0().forEach(function(m){
+      var parts = personParts(m);
+      people[m.toLowerCase()] = {name:m, picks:parts.length, won:parts.filter(function(x){ return x.r === "won"; }).length, lost:parts.filter(function(x){ return x.r === "lost"; }).length};
+    });
     var rows = Object.keys(people).map(function(k){ var p=people[k]; var d=p.won+p.lost; p.rate = d ? p.won/d : -1; return p; })
       .sort(function(a,b){ return b.won - a.won || b.rate - a.rate || a.lost - b.lost; });
     var board = $("board"); board.textContent = "";
@@ -1910,9 +1913,25 @@ var FBModel = (function(){
     var box = $("pChips"); box.textContent = "";
     MEMBERS.forEach(function(m){
       var b = el("button", null, m); b.type = "button"; b.setAttribute("aria-pressed", PSEL.indexOf(m) >= 0 ? "true" : "false");
-      b.addEventListener("click", function(){ var i = PSEL.indexOf(m); if(i >= 0) PSEL.splice(i,1); else PSEL.push(m); renderChips(); });
+      b.addEventListener("click", function(){ var i = PSEL.indexOf(m); if(i >= 0) PSEL.splice(i,1); else PSEL.push(m);
+        PSEL.sort(function(a,c){ return MEMBERS.indexOf(a) - MEMBERS.indexOf(c); }); renderChips(); fillNames(); });
       box.appendChild(b);
     });
+  }
+  // A person's part in a treble: all the legs they picked, counted as ONE bet.
+  // Landed only if all their legs landed (a solo treble = the whole treble).
+  function personParts(name){
+    var key = String(name).trim().toLowerCase(), out = [];
+    bets.forEach(function(b){
+      if(isSingle(b)) return;
+      var all = legsOf(b), mine = all.filter(function(l){ return (l.name||"").trim().toLowerCase() === key; });
+      if(!mine.length) return;
+      var rs = mine.map(function(l){ return l.result || "open"; });
+      var r = rs.indexOf("lost") >= 0 ? "lost" : rs.every(function(x){ return x === "void"; }) ? "void" : rs.indexOf("open") >= 0 ? "open" : "won";
+      var odds = mine.reduce(function(a,l){ return a * (toDecimal(l.odds) || 1); }, 1);
+      out.push({b:b, legs:mine, solo: mine.length === all.length, r:r, odds:odds});
+    });
+    return out.sort(function(a,c){ return (c.b.createdAt||0) - (a.b.createdAt||0); });
   }
   function betPlayers(b){ return b && Array.isArray(b.players) && b.players.length ? b.players : MEMBERS; }
   function setWL(id, key, v){ WL[key] = v; Array.prototype.forEach.call($(id).querySelectorAll("button"), function(b){ b.setAttribute("aria-pressed", b.getAttribute("data-r") === v ? "true" : "false"); }); }
@@ -2045,17 +2064,20 @@ var FBModel = (function(){
   }
   function lastStake(m){ for(var i=0;i<bets.length;i++){ if(bets[i].stake && (isSingle(bets[i]) === (m === "single"))) return String(bets[i].stake); } for(var j=0;j<bets.length;j++){ if(bets[j].stake) return String(bets[j].stake); } return ""; }
   var NEW = "__new__";
+  function pickers(){ return PSEL && PSEL.length ? PSEL : MEMBERS; }
   function fillNames(){
+    var list = pickers();
     [0,1,2].forEach(function(i){
       var sel = $("n"+i), cur = sel.value; sel.textContent = "";
-      MEMBERS.forEach(function(m){ var o=document.createElement("option"); o.value=m; o.textContent=m; sel.appendChild(o); });
+      list.forEach(function(m){ var o=document.createElement("option"); o.value=m; o.textContent=m; sel.appendChild(o); });
       var add=document.createElement("option"); add.value=NEW; add.textContent="+ Add someone new…"; sel.appendChild(add);
-      if(cur && MEMBERS.indexOf(cur)>=0) sel.value = cur;
+      sel.value = cur && list.indexOf(cur) >= 0 ? cur : list[i % list.length];
     });
   }
   function setPicker(i, name){
-    if(name && MEMBERS.indexOf(name) < 0){ MEMBERS.push(name); fillNames(); }
-    $("n"+i).value = name || MEMBERS[i % MEMBERS.length];
+    if(name && MEMBERS.indexOf(name) < 0){ MEMBERS.push(name); if(PSEL.indexOf(name) < 0) PSEL.push(name); renderChips(); fillNames(); }
+    var list = pickers();
+    $("n"+i).value = name && list.indexOf(name) >= 0 ? name : list[i % list.length];
   }
   [0,1,2].forEach(function(i){
     $("n"+i).addEventListener("change",function(){
@@ -2071,7 +2093,8 @@ var FBModel = (function(){
   function addLabel(){ return "Confirm bet"; }
   function openSheet(b, m){
     editingId = b ? b.id : null; SINGLE_P = null;
-    PSEL = (b ? betPlayers(b) : MEMBERS).filter(function(m){ return MEMBERS.indexOf(m) >= 0; }).slice(); if(!PSEL.length) PSEL = MEMBERS.slice(); renderChips();
+    PSEL = (b ? betPlayers(b) : MEMBERS).filter(function(x){ return MEMBERS.indexOf(x) >= 0; }).slice(); if(!PSEL.length) PSEL = MEMBERS.slice();
+    renderChips();
     WHEN = b && b.createdAt && (b.legs||[]).every(function(l){ var f = l.fixture && fixtureFor(fkey(l.fixture)); return f ? matchTime(f) <= Date.now() : true; }) && (b.legs||[]).some(function(l){ return l.fixture; }) ? "past" : "up";
     ["sWL","xWL0","xWL1","xWL2"].forEach(function(id, k){ setWL(id, k === 0 ? "s" : k - 1, ""); });
     $("fDate").value = b && b.createdAt ? isoDay(new Date(b.createdAt)) : isoDay(new Date());
