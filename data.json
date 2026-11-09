@@ -6,6 +6,26 @@
  ],
  "bets": [
   {
+   "id": "bmw97qy96gl9h",
+   "createdAt": 1794139200000,
+   "type": "single",
+   "stake": 10,
+   "legs": [
+    {
+     "name": "All of us",
+     "joint": true,
+     "pick": "Isak, +3.5 Brighton Brentford, Cole palmer +1.5 shots",
+     "odds": "10.89",
+     "fixture": null,
+     "outcome": null,
+     "result": "lost"
+    }
+   ],
+   "players": [
+    "Jacques"
+   ]
+  },
+  {
    "id": "bmw97n8vc88w2",
    "createdAt": 1794146400000,
    "players": [
@@ -214,5 +234,5 @@
   }
  ],
  "lineups": {},
- "updatedAt": 1794225682345
+ "updatedAt": 1794225855213
 }
